@@ -1,0 +1,19 @@
+{
+  "name": "cuams_bot",
+  "version": "1.0.0",
+  "description": "A bot to manage the CUAMS discord server.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Beniyu/cuams_bot.git"
+  },
+  "author": "Beniyu",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Beniyu/cuams_bot/issues"
+  },
+  "homepage": "https://github.com/Beniyu/cuams_bot#readme"
+}

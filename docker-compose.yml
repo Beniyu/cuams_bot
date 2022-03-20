@@ -1,0 +1,7 @@
+version: "3"
+services:
+    cuams_bot_node:
+        container_name: cuams_bot_node
+        build: ./application
+        volumes:
+         - ./mountfolder:/storage
