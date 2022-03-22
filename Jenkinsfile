@@ -29,6 +29,7 @@ pipeline {
 		
 		stage('Deploy to Staging Environment') {
 			steps {
+				sh "docker-compose build"
 				sh "docker-compose up -d"
 			}
 		}
