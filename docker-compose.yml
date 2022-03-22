@@ -3,5 +3,5 @@ services:
     cuams_bot_node:
         container_name: cuams_bot_node
         build: ./application
-        volumes:
-         - ./mountfolder:/storage
+        ports:
+         - 3000:3000
