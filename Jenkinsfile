@@ -3,13 +3,21 @@ pipeline {
 	
 	stages {
 		stage('SCM') {
-			checkout scm
+			steps { 
+				script {
+					checkout scm
+				}
+			}
 		}
 		stage('SonarQube Analysis') {
-			def scannerHome = tool 'SonarScanner';
-			withSonarQubeEnv() {
-				sh "${scannerHome}/bin/sonar-scanner"
-			}	
+			steps {
+				script {
+					def scannerHome = tool 'SonarScanner';
+					withSonarQubeEnv() {
+						sh "${scannerHome}/bin/sonar-scanner"
+					}	
+				}
+			}
 		}
 	}
 }
