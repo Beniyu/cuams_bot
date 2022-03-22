@@ -10,24 +10,7 @@ pipeline {
 			}
 		}
 		
-		stage('SonarQube Analysis') {
-			steps {
-				script {
-					def scannerHome = tool 'SonarScanner';
-					withSonarQubeEnv() {
-						sh "${scannerHome}/bin/sonar-scanner"
-					}	
-				}
-			}
-		}
-		
-		stage('Copy Production Database') {
-			steps {
-				sh "docker exec MongoDB /scripts/recreateStaging.sh"
-			}
-		}
-		
-		stage('Deploy to Staging Environment') {
+		stage('Deploy to Production Environment') {
 			steps {
 				sh "docker-compose build"
 				sh "docker-compose up -d"
