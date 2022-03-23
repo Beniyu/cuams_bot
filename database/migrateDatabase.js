@@ -1,3 +1,8 @@
+var log = require('why-is-node-running')
+setTimeout(function () {
+log() // logs out active handles that are keeping node running
+}, 100)
+
 const fs = require('fs')
 
 var databaseType = process.argv[2];
@@ -27,6 +32,3 @@ fs.readFile(databaseCredentialsFile, (err, data) => {
 		var db = client.db(databaseName, (err, r) => { client.close(); } );
 	});
 });
-
-	
-	
