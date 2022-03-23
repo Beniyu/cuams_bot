@@ -31,6 +31,7 @@ pipeline {
 		{
 			steps {
 				sh "npm install mongodb fs why-is-node-running"
+				sh "node ./database/migrateDatabase.js staging"
 			}
 		}
 		
