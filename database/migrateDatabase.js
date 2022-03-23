@@ -17,12 +17,10 @@ switch (databaseType)
 
 fs.readFile(databaseCredentialsFile, (err, data) => {
 	var credentials = JSON.parse(data);
-	/*var MongoClient = require('mongodb').MongoClient;
+	var MongoClient = require('mongodb').MongoClient;
 	var url = "mongodb://" + credentials.username + ":" + credentials.password + "@docker:27017/" + databaseName;
 	MongoClient.connect(url, (err, client) => { 
-		var db = client.db(databaseName, (err, r) => { 
-			client.close();
-			process.exit(0);
-		});
-	});*/
+		var db = client.db(databaseName);
+		client.close();
+	});
 });
