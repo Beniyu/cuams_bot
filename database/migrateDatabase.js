@@ -1,7 +1,7 @@
 const fs = require('fs');
 
 var databaseType = process.argv[2];
-switch (databaseType):
+switch (databaseType)
 {
 	case "production":
 		var databaseCredentialsFile = "/var/jenkins_home/dbcredentials/cuams_bot_prod.json";
