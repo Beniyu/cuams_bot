@@ -22,6 +22,13 @@ pipeline {
 			}
 		}
 		
+		stage('Migrate Database') {
+			steps {
+				sh "npm install mongodb fs"
+				sh "node ./database/migrateDatabase.js production"
+			}
+		}
+		
 		stage('Deploy to Production Environment') {
 			steps {
 				sh "docker-compose build"
