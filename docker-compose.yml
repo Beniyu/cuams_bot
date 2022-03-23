@@ -1,5 +1,12 @@
 version: "3"
+networks:
+    cuams_bot:
+        external: true
 services:
     cuams_bot_node:
         container_name: cuams_bot_node_staging
         build: ./application
+        networks:
+            cuams_bot:
+                aliases:
+                 - node

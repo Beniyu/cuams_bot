@@ -1,0 +1,20 @@
+version: "3"
+networks:
+    cuams_bot:
+        external: true
+services:
+    mongodb:
+        container_name: mongodb
+        image: mongo:latest
+        environment:
+         - "MONGO_INITDB_ROOT_USERNAME=root"
+         - "MONGO_INITDB_ROOT_PASSWORD=localDevEnvironmentOnly"
+        ports:
+         - 27017:27017
+        volumes:
+         - ./configdb:/data/configdb
+         - ./db:/data/db
+        networks:
+            cuams_bot:
+                aliases:
+                 - docker
