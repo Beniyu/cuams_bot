@@ -27,6 +27,13 @@ pipeline {
 			}
 		}
 		
+		stage('Migrate Database')
+		{
+			steps {
+				sh "node ./database/migrateDatabase.js staging"
+			}
+		}
+		
 		stage('Deploy to Staging Environment') {
 			steps {
 				sh "docker-compose build"
