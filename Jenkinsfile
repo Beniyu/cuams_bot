@@ -1,6 +1,8 @@
 pipeline {
 	agent any
 	
+	tools {nodejs "node"}
+	
 	stages {
 		stage('SCM') {
 			steps { 
@@ -30,7 +32,6 @@ pipeline {
 		stage('Migrate Database')
 		{
 			steps {
-				sh "npm install mongodb fs"
 				sh "node ./database/migrateDatabase.js staging"
 			}
 		}
