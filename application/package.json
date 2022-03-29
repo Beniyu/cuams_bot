@@ -11,9 +11,12 @@
     "url": "git+https://github.com/Beniyu/cuams_bot.git"
   },
   "author": "Beniyu",
-  "license": "ISC",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/Beniyu/cuams_bot/issues"
   },
-  "homepage": "https://github.com/Beniyu/cuams_bot#readme"
+  "homepage": "https://github.com/Beniyu/cuams_bot#readme",
+  "dependencies": {
+    "discord.js": "^13.6.0"
+  }
 }
