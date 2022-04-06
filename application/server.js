@@ -11,23 +11,16 @@ switch (nodeEnvironment) {
         botSecretKeyFile = "./config.json";
         break;
     case "staging":
-        botSecretKeyFile = "/var/jenkins_home/dbcredentials/config_staging.json";
+        botSecretKeyFile = "/credentials/config_staging.json";
         break;
     case "production":
-        botSecretKeyFile = "/var/jenkins_home/dbcredentials/config_prod.json";
+        botSecretKeyFile = "/credentials/config_prod.json";
         break;
     default:
         throw new Error("No valid environment specified in command.");
         break;
 }
 var _a = require(botSecretKeyFile), botSecretKey = _a.botSecretKey, applicationID = _a.applicationID, guildID = _a.guildID;
-var commands = [
-    new SlashCommandBuilder().setName('ping').setDescription("Test command. Replies with pong.")
-]
-    .map(function (command) { return command.toJSON(); });
-var rest = new REST({ version: '9' }).setToken(botSecretKey);
-rest.put(Routes.applicationGuildCommands(applicationID, guildID), { body: commands })
-    .then(function () { return console.log("Successfully registered application commands"); })["catch"](console.error);
 var client = new Discord.Client({
     intents: [Discord.Intents.FLAGS.GUILDS]
 });
