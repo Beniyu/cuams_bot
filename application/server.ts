@@ -13,10 +13,10 @@ switch (nodeEnvironment)
         botSecretKeyFile = "./config.json";
         break;
     case "staging":
-        botSecretKeyFile = "/var/jenkins_home/dbcredentials/config_staging.json";
+        botSecretKeyFile = "/credentials/config_staging.json";
         break;
     case "production":
-        botSecretKeyFile = "/var/jenkins_home/dbcredentials/config_prod.json";
+        botSecretKeyFile = "/credentials/config_prod.json";
         break;
     default:
         throw new Error("No valid environment specified in command.");

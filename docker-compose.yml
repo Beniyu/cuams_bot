@@ -10,3 +10,5 @@ services:
             cuams_bot:
                 aliases:
                  - node
+        volumes:
+            - /var/jenkins_home/bot_credentials:/credentials
