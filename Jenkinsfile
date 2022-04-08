@@ -20,6 +20,12 @@ pipeline {
 				}
 			}
 		}
+
+        stage('Close Current Staging Environment') {
+            steps {
+                sh "docker-compose down"
+            }
+        }
 		
 		stage('Copy Production Database') {
 			steps {

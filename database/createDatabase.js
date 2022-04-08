@@ -18,7 +18,7 @@ prompt.get(['username', 'password'], function(err, result) {
 				{ role: "readWrite", db: "cuams_bot_staging" },
 			],
 			authenticationRestrictions: [
-				{ clientSource: ["172.17.0.0/24"] },
+				{ clientSource: ["172.16.0.0/12"] },
 				{ clientSource: ["127.0.0.1/32"] }
 			]}
 		);
@@ -30,7 +30,7 @@ prompt.get(['username', 'password'], function(err, result) {
 				{ role: "readWrite", db: "cuams_bot_staging" },
 			],
 			authenticationRestrictions: [
-				{ clientSource: ["172.17.0.0/24"] },
+				{ clientSource: ["172.16.0.0/12"] },
 				{ clientSource: ["127.0.0.1/32"] }
 			]}
 		, function(err, r) { db.close(); } );
