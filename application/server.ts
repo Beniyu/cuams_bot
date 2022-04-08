@@ -3,6 +3,8 @@ import { REST } from "@discordjs/rest";
 import { Routes } from 'discord-api-types/v9';
 import { readdirSync } from "fs";
 import { DiscordClient, DiscordCommand } from  "./discordClient.js";
+import { connect, getDB, assignCredentials } from "./database";
+import {synchronizeUsersAndRoles} from "./bootupScripts";
 
 // The bot should be run using the command "node server.js (environment)"
 if (process.argv.length != 3)
@@ -16,38 +18,48 @@ let nodeEnvironment : string = process.argv[2];
 // Development environment uses local file
 // Staging and production environment uses remote file
 let botSecretKeyFile : string;
+let databaseFile : string;
 switch (nodeEnvironment)
 {
     case "development":
         botSecretKeyFile = "./config.json";
+        databaseFile = "./";
         break;
     case "staging":
         botSecretKeyFile = "/credentials/config_staging.json";
+        databaseFile = "";
         break;
     case "production":
         botSecretKeyFile = "/credentials/config_prod.json";
+        databaseFile = "";
         break;
     default: // no default environment
         throw new Error("No valid environment specified in command.");
 }
 
 // Config file contains bot information
-const { botSecretKey, applicationID, guildID }: { botSecretKey: string, applicationID: string, guildID: string } = require(botSecretKeyFile);
+const { botSecretKey, applicationID, guildID, databaseName, databaseUri }: { botSecretKey: string, applicationID: string, guildID: string, databaseName : string, databaseUri : string } = require(botSecretKeyFile);
 
 // Create new Discord bot client
-const client : DiscordClient = new DiscordClient({ intents: [Discord.Intents.FLAGS.GUILDS] });
+const client : DiscordClient = new DiscordClient({ intents:
+        [Discord.Intents.FLAGS.GUILDS, Discord.Intents.FLAGS.GUILD_MEMBERS]
+});
+
+// Load database
+assignCredentials(databaseUri, databaseName);
+let dbPromise = connect()
+    .then((data) => { // Ping database to check connection
+        getDB().command({ping: 1})
+    });
 
 // Deploy slash commands
-//const commands = [
-//    new SlashCommandBuilder().setName('ping').setDescription("Test command. Replies with pong.")
-//]
-//.map(command => command.toJSON());
-
 const rest = new REST({ version: '9' }).setToken(botSecretKey);
 
-// Import only js files as commands
+// Import only js files as commands and events
 let commandFiles : string[] = readdirSync("./commands")
-    .filter(fileName => fileName.endsWith(".js"))
+    .filter(fileName => fileName.endsWith(".js"));
+let eventFiles : string[] = readdirSync("./events")
+    .filter(fileName => fileName.endsWith(".js"));
 
 let commands = [];
 
@@ -58,6 +70,23 @@ commandFiles.forEach(commandFile => {
     client.addCommand(command);
 });
 
+export type DiscordEvent = {
+    name: string,
+    once: boolean,
+    execute: (...any) => (void)
+};
+
+// Add events to event emitter
+for (const file of eventFiles) {
+    const event : DiscordEvent = require(`./events/${file}`);
+    if (event.once) {
+        client.once(event.name, (...args) => event.execute(...args));
+    } else {
+        client.on(event.name, (...args) => event.execute(...args));
+    }
+}
+
+// Register commands using REST API
 rest.put(Routes.applicationGuildCommands(applicationID, guildID), { body: commands })
     .then(() => console.log("Successfully registered application commands"))
     .catch(console.error);
@@ -67,22 +96,21 @@ client.once('ready', () => {
     console.log("Ready!");
 });
 
-client.on("interactionCreate", async interaction => {
-    if (!interaction.isCommand()) return;
-
-    const command : DiscordCommand = client.getCommand(interaction.commandName);
-
-    if (!command) return;
-
-    try {
-        await command.execute(interaction);
-    } catch (error) {
-        console.error(error);
-        await interaction.reply({content: "500: An error occurred while executing this command.", ephemeral: true});
-    }
+// Do not load client until database loaded
+dbPromise
+.then((data) => {
+    console.log("Successfully connected to database. ");
+    // Login bot client
+    return client.login(botSecretKey);
+})
+.then((data) => {
+    // Synchronise discord and database
+    return synchronizeUsersAndRoles(client, guildID, getDB());
+})
+.then((data) => {
+    // Finished initialising
+    console.log("Client connected.");
+})
+.catch((error) => {
+    console.error(error)
 });
-
-// Connect client to Discord
-client.login(botSecretKey)
-    .then((data) => console.log(`Client connected. ${data}`))
-    .catch((err) => console.error(err));

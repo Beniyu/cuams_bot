@@ -8,7 +8,8 @@ prompt.get(['username', 'password'], function(err, result) {
 	MongoClient.connect(url, function(err, db) { 
 		var db1 = db.db("cuams_bot_prod");
 		var db2 = db.db("cuams_bot_staging");
-		db1.createCollection("user");
+		db1.createCollection("users");
+		db1.createCollection("roles");
 		db1.addUser("botuser", "passwordHere",
 			{roles: [
 				{ role: "dbAdmin", db: "cuams_bot_prod" },
@@ -21,7 +22,8 @@ prompt.get(['username', 'password'], function(err, result) {
 				{ clientSource: ["127.0.0.1/32"] }
 			]}
 		);
-		db2.createCollection("user");
+		db2.createCollection("users");
+		db2.createCollection("roles");
 		db2.addUser("botuser", "passwordHere",
 			{roles: [
 				{ role: "dbAdmin", db: "cuams_bot_staging" },

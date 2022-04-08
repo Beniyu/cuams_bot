@@ -30,4 +30,4 @@ export class DiscordClient extends Client {
 export type DiscordCommand = {
     data: SlashCommandBuilder,
     execute: (arg: CommandInteraction) => Promise<any>,
-};
+}

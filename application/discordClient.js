@@ -15,5 +15,4 @@ class DiscordClient extends discord_js_1.Client {
     }
 }
 exports.DiscordClient = DiscordClient;
-;
 //# sourceMappingURL=discordClient.js.map
