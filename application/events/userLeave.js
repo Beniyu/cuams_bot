@@ -5,8 +5,8 @@ module.exports = {
     name: "guildMemberRemove",
     once: false,
     execute: (member) => {
-        (0, database_1.removeUser)(member.user)
-            .then((data) => {
+        (0, database_1.getDB)().removeUser(member.user.id)
+            .then(() => {
             console.log("User removed. " + member.displayName);
         })
             .catch((error) => {

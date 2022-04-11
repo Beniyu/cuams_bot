@@ -3,7 +3,7 @@ import { REST } from "@discordjs/rest";
 import { Routes } from 'discord-api-types/v9';
 import { readdirSync } from "fs";
 import { DiscordClient, DiscordCommand } from  "./discordClient.js";
-import { connect, getDB, assignCredentials } from "./database";
+import {MongoDatabase, DiscordDatabase, BaseDatabase} from "./database";
 import {synchronizeUsersAndRoles} from "./bootupScripts";
 
 // The bot should be run using the command "node server.js (environment)"
@@ -46,11 +46,9 @@ const client : DiscordClient = new DiscordClient({ intents:
 });
 
 // Load database
-assignCredentials(databaseUri, databaseName);
-let dbPromise = connect()
-    .then((data) => { // Ping database to check connection
-        getDB().command({ping: 1})
-    });
+const baseDatabase : BaseDatabase = new MongoDatabase(databaseUri, databaseName);
+const database = new DiscordDatabase(baseDatabase);
+let dbPromise = database.connect();
 
 // Deploy slash commands
 const rest = new REST({ version: '9' }).setToken(botSecretKey);
@@ -98,16 +96,16 @@ client.once('ready', () => {
 
 // Do not load client until database loaded
 dbPromise
-.then((data) => {
+.then(() => {
     console.log("Successfully connected to database. ");
     // Login bot client
     return client.login(botSecretKey);
 })
-.then((data) => {
+.then(() => {
     // Synchronise discord and database
-    return synchronizeUsersAndRoles(client, guildID, getDB());
+    return synchronizeUsersAndRoles(client, guildID, database);
 })
-.then((data) => {
+.then(() => {
     // Finished initialising
     console.log("Client connected.");
 })

@@ -1,12 +1,12 @@
 import {Role} from "discord.js";
-import {removeRole} from "../database";
+import {getDB} from "../database";
 
 module.exports = {
     name: "roleDelete",
     once: false,
     execute: (role : Role) => {
-        removeRole(role)
-            .then((data) => {
+        getDB().removeRole(role.id)
+            .then(() => {
                 console.log("Role deleted. " + role.name);
             })
             .catch((error) => {

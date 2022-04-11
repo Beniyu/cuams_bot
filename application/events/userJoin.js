@@ -5,8 +5,8 @@ module.exports = {
     name: "guildMemberAdd",
     once: false,
     execute: (member) => {
-        (0, database_1.addUser)(member.user)
-            .then((data) => {
+        (0, database_1.getDB)().addUser(member.user.id)
+            .then(() => {
             console.log("User added. " + member.displayName);
         })
             .catch((error) => {

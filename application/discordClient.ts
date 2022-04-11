@@ -1,6 +1,11 @@
 import {Client, ClientOptions, Collection, CommandInteraction} from "discord.js";
 import {SlashCommandBuilder} from "@discordjs/builders";
 
+export type DiscordCommand = {
+    data: SlashCommandBuilder,
+    execute: (arg: CommandInteraction) => Promise<any>,
+}
+
 export class DiscordClient extends Client {
     _commands: Collection<any, any>
 
@@ -25,9 +30,4 @@ export class DiscordClient extends Client {
     getCommand(commandName: string) : DiscordCommand {
         return this._commands.get(commandName);
     }
-}
-
-export type DiscordCommand = {
-    data: SlashCommandBuilder,
-    execute: (arg: CommandInteraction) => Promise<any>,
 }

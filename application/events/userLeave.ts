@@ -1,12 +1,12 @@
 import {GuildMember} from "discord.js";
-import {removeUser} from "../database";
+import {getDB} from "../database";
 
 module.exports = {
     name: "guildMemberRemove",
     once: false,
     execute: (member : GuildMember) => {
-        removeUser(member.user)
-            .then((data) => {
+        getDB().removeUser(member.user.id)
+            .then(() => {
                 console.log("User removed. " + member.displayName);
             })
             .catch((error) => {

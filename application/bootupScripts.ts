@@ -1,18 +1,23 @@
 import {DiscordClient} from "./discordClient";
-import {DatabaseUser, DatabaseRole} from "./database";
+import {DiscordDatabase} from "./database";
 import {Collection, Guild, GuildMember, Role} from "discord.js";
-import {Db} from "mongodb";
+
+type Data = {
+    users: string[],
+    roles: string[]
+}
 
 /**
  * Synchronizes the user database with the guild member list
  * @param client The DiscordClient instance
  * @param guildID The guild ID
+ * @param database The DiscordDatabase instance
  */
-export async function synchronizeUsersAndRoles(client : DiscordClient, guildID : string, database: Db) : Promise<void> {
+export async function synchronizeUsersAndRoles(client : DiscordClient, guildID : string, database: DiscordDatabase) : Promise<void> {
     // Get all IDs from Discord
     const discordPromise : Promise<Data> = getGuildData(client, guildID);
     // Get all IDs from database
-    const databasePromise : Promise<Data> = getDatabaseData(database);
+    const databasePromise : Promise<Data> = database.getUsersAndRoles();
     // Only continue when both are loaded
     const IDs = await Promise.all([discordPromise, databasePromise]);
     // Extract member lists into separate lists
@@ -22,47 +27,19 @@ export async function synchronizeUsersAndRoles(client : DiscordClient, guildID :
     // Track database promises to only finish when all are done
     let databaseFinalPromises : Promise<any>[] = [];
 
-    for (let dataPart of [{index:"users", databaseName:"users"}, {index:"roles", databaseName: "roles"}]) {
+    for (let dataPart of ["users", "roles"]) {
         // Get mismatch from each list
-        const missingDatabaseData : string[] = discordData[dataPart.index].filter(member => !(databaseData[dataPart.index].includes(member)));
-        const missingDiscordData : string[] = databaseData[dataPart.index].filter(member => !(discordData[dataPart.index].includes(member)));
-
-        // Convert mismatched items into new entities or queries
-        // Any user/role not in database but in guild should be added to database
-        let newDatabaseData : DatabaseUser[] | DatabaseRole[];
-        switch (dataPart.databaseName) {
+        const missingDatabaseData : string[] = discordData[dataPart].filter(member => !(databaseData[dataPart].includes(member)));
+        const missingDiscordData : string[] = databaseData[dataPart].filter(member => !(discordData[dataPart].includes(member)));
+        switch (dataPart) {
             case "users":
-                newDatabaseData = missingDatabaseData.map(member => {
-                    return {
-                        ID: member,
-                        permissions: []
-                    }
-                });
+                databaseFinalPromises.push(database.addUser(missingDatabaseData));
+                databaseFinalPromises.push(database.removeUser(missingDiscordData));
                 break;
             case "roles":
-                newDatabaseData = missingDatabaseData.map(member => {
-                    return {
-                        ID: member,
-                        permissions: []
-                    }
-                });
+                databaseFinalPromises.push(database.addRole(missingDatabaseData));
+                databaseFinalPromises.push(database.removeRole(missingDiscordData));
                 break;
-        }
-
-        // Any user in database not in guild but in database should be removed
-        // This creates a basic query only containing ID
-        const leavingDatabaseData : { ID: string }[] = missingDiscordData.map(id => {
-            return {
-                ID: id
-            }
-        });
-
-        // Push changes to database
-        if (newDatabaseData.length != 0) {
-            databaseFinalPromises.push(database.collection(dataPart.databaseName).insertMany(newDatabaseData));
-        }
-        if (leavingDatabaseData.length != 0) {
-            databaseFinalPromises.push(database.collection(dataPart.databaseName).deleteMany(leavingDatabaseData));
         }
     }
 
@@ -88,40 +65,4 @@ async function getGuildData(client: DiscordClient, guildID: string) : Promise<Da
         users: Array.from(memberCollection.keys()),
         roles: Array.from(roleCollection.keys())
     };
-}
-
-/**
- * Get all user IDs from database
- * @param database MongoDB database object
- */
-async function getDatabaseData(database: Db) : Promise<Data> {
-    // Initiate empty array of user and role IDs
-    let databaseMembers : string[] = [];
-    let databaseRoles : string[] = [];
-
-    // Fetch user and role IDs from database
-    let userPromise : Promise<void> = database.collection("users")
-        .find({}, {projection : {ID: 1}})
-        .forEach(user => {
-            databaseMembers.push(user.ID);
-        });
-    let rolePromise : Promise<void> = database.collection("roles")
-        .find({}, {projection: {ID: 1}})
-        .forEach(role => {
-            databaseRoles.push(role.ID);
-        });
-
-    // Wait for IDs to be retrieved
-    await Promise.all([userPromise, rolePromise]);
-
-    // Return values
-    return {
-        users: databaseMembers,
-        roles: databaseRoles
-    };
-}
-
-type Data = {
-    users: string[],
-    roles: string[]
 }

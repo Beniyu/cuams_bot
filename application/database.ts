@@ -1,131 +1,437 @@
 import { MongoClient, Db } from "mongodb";
-import {Role, User} from "discord.js";
+import assert = require("assert");
 
-// Store client as variable accessible by other files
-let _db : Db = null;
-let _client : MongoClient = null;
-let _uri : string = null;
-let _databaseName : string = null;
+export enum DatabaseOperation {
+    FIND = "find",
+    DELETE = "delete",
+    INSERT = "insert",
+    UPDATE = "update",
+    PUSHTOARRAY = "pushToArray",
+    REMOVEFROMARRAY = "removeFromArray"
+}
 
-// Ensure only one connection is being attempted
-let _starting : boolean = false;
+export enum DatabaseCollection {
+    USERS = "users",
+    ROLES = "roles"
+}
 
-/**
- * Change database settings for future connections
- * @param uri MongoDB uri
- * @param database MongoDB database name
- */
-export function assignCredentials(uri: string, database: string) {
-    _uri = uri;
-    _databaseName = database;
+export enum DatabaseItemProperties {
+    ID = "ID",
+    PERMISSIONS = "permissions"
+}
+
+export interface DatabaseItem {
+    ID: string
+}
+
+export interface DatabaseUser extends DatabaseItem {
+    "permissions": string[]
+}
+
+export interface DatabaseRole extends DatabaseItem {
+    "permissions": string[]
+}
+
+export type JSONValue =
+    | string
+    | number
+    | boolean
+    | JSONObject
+    | JSONArray;
+
+export interface JSONObject {
+    [x: string]: JSONValue;
+}
+
+export interface JSONArray extends Array<JSONValue> { }
+
+export interface BaseDatabase {
+    /**
+     * Add items to the database for a given collection name
+     * @param item Item(s) to add
+     * @param collectionName Database collection name
+     */
+    insert(item: DatabaseItem | Array<DatabaseItem>, collectionName: DatabaseCollection) : Promise<void>;
+
+    /**
+     * Removes items from the database for a given collection name
+     * @param item Item(s) to remove
+     * @param collectionName Database collection name
+     */
+    delete(item: DatabaseItem | Array<DatabaseItem>, collectionName: DatabaseCollection) : Promise<void>;
+
+    /**
+     * Find items in the database
+     * @param query Query object
+     * @param collectionName Database collection name
+     */
+    find(query: Object, collectionName: DatabaseCollection) : Promise<DatabaseItem[]>;
+
+    /**
+     * Update value in database
+     * @param query Query object
+     * @param key Key to change
+     * @param value New value
+     * @param collectionName Database collection name
+     */
+    update(query: Object, key: string, value: JSONValue, collectionName: DatabaseCollection) : Promise<void>;
+
+    /**
+     * Push value to array in database
+     * @param query Query object
+     * @param property Object property
+     * @param values Values to push
+     * @param collectionName Database collection name
+     */
+    pushToArray?(query: Object, property: string, values: JSONValue[] | JSONValue, collectionName: DatabaseCollection) : Promise<void>;
+
+    /**
+     * Remove values from array in database
+     * @param query Query object
+     * @param property Object property
+     * @param values Values to remove
+     * @param collectionName Database collection name
+     */
+    removeFromArray?(query: Object, property: string, values: JSONValue[] | JSONValue, collectionName: DatabaseCollection) : Promise<void>;
+
+    /**
+     * Start a connection with the database
+     */
+    startConnection() : Promise<void>;
+
+    /**
+     * Reconnect with the database
+     */
+    reconnect() : Promise<void>;
 }
 
 /**
- * Connect to MongoDB database
+ * Generate basic Database item object with permissions
+ * @param id Discord ID
  */
-export async function connect() : Promise<void> {
+function generateEmptyDiscordPermissionObject(id: string) {
+    return {
+        ID: id,
+        permissions: []
+    };
+}
 
-    // Allow X connection attempts
-    let retries = 3;
+/**
+ * Generates object with only an ID field
+ * @param id Discord ID
+ */
+function generateEmptyDiscordItemObject(id: string) {
+    return {
+        ID: id
+    };
+}
 
-    // Wait if already connecting
-    if (_starting == true)
-    {
-        await new Promise(r => setTimeout(r, retries * 500))
-        await this.getDB().command({ ping: 1 });
+export class MongoDatabase extends MongoClient implements BaseDatabase {
+    _starting: boolean;
+    _databaseName: string;
+    _db: Db;
+    _connectionPromise: Promise<void>;
+
+    constructor(uri: string, databaseName: string) {
+        super(uri);
+        this._databaseName = databaseName;
+        this._connectionPromise = new Promise((accept) => {accept();});
     }
 
-    // Ensure only one attempted connection at a time
-    _starting = true;
-    for (let i = 0; i < retries; i++) {
-        try {
-            // Attempt connection
-            let temp_client = new MongoClient(_uri);
-            await temp_client.connect();
-            // Replace client with new client if successful
-            let temp_db = await temp_client.db(_databaseName);
-            if (_client != null) {
-                await _client.close();
-            }
-            _client = temp_client;
-            _db = temp_db;
-            // Re-allow connection attempts
-            _starting = false;
+    async insert(item: DatabaseItem | Array<DatabaseItem>, collectionName: DatabaseCollection): Promise<void> {
+        // insertMany for arrays, insertOne for single item
+        if (Array.isArray(item)) {
+            if (item.length === 0) return;
+            await this._db.collection(collectionName).insertMany(item);
             return;
-        } catch(err) {
-            // Wait 500ms between connection attempts
-            console.error(err);
-            await new Promise(r => setTimeout(r, 500));
-            retries -= 1;
+        }
+        await this._db.collection(collectionName).insertOne(item);
+        return;
+    }
+
+    async delete(item: DatabaseItem | Array<DatabaseItem>, collectionName: DatabaseCollection): Promise<void> {
+        // deleteMany for arrays, deleteOne for single item
+        if (Array.isArray(item)) {
+            if (item.length === 0) return;
+            await this._db.collection(collectionName).deleteMany(item);
+            return;
+        }
+        await this._db.collection(collectionName).deleteOne(item);
+        return;
+    }
+
+    async update(query: Object, key: string, value: JSONValue, collectionName: DatabaseCollection) {
+        let updateObject = {};
+        updateObject[key] = value;
+        await this._db.collection(collectionName).updateMany(query, { "$set" : updateObject });
+    }
+
+    async pushToArray(query: Object, property: string, values: JSONValue[] | JSONValue, collectionName: DatabaseCollection) : Promise<void> {
+        let updateObject = {}
+        if (Array.isArray(values)) {
+            values.forEach((value) => {updateObject[property] = value;});
+        } else {
+            updateObject[property] = values;
+        }
+        await this._db.collection(collectionName).updateMany(query, { "$push" : updateObject});
+    }
+
+    async removeFromArray(query: Object, property: string, values: JSONValue[] | JSONValue, collectionName: DatabaseCollection) : Promise<void> {
+        let updateObject = {}
+        if (Array.isArray(values)) {
+            values.forEach((value) => {updateObject[property] = value;});
+        } else {
+            updateObject[property] = values;
+        }
+        await this._db.collection(collectionName).updateMany(query, { "$pull" : updateObject});
+    }
+
+    async find(query: Object, collectionName: DatabaseCollection): Promise<DatabaseItem[]> {
+        return await this._db.collection(collectionName)
+            .find(query).toArray() as unknown as DatabaseItem[];
+    }
+
+    async startConnection(): Promise<void> {
+
+        // Allow X connection attempts
+        let retries = 3;
+
+        // Wait if already connecting
+        if (this._starting == true)
+        {
+            await this._connectionPromise;
+            return;
+        }
+
+        // Ensure only one attempted connection at a time
+        this._starting = true;
+        this._connectionPromise = new Promise (async (resolve, reject) => {
+            for (let i = 0; i <= retries; i++) {
+                try {
+                    // Attempt connection
+                    await this.connect();
+                    this._db = this.db(this._databaseName);
+                    await this._db.command({ping: 1});
+
+                    // Re-allow connection attempts
+                    this._starting = false;
+                    resolve();
+                } catch(err) {
+                    // Wait 500ms between connection attempts
+                    console.error(err);
+                    await new Promise(r => setTimeout(r, 500));
+                }
+            }
+            reject("Unable to connect to database.");
+        });
+    }
+
+    async reconnect() : Promise<void> {
+        try {
+            let response = await this._db.command({ping: 1});
+            assert(response !== null);
+            return;
+        } catch (err) {
+            console.error("Error confirmed at reconnection: " + err);
+            await this.startConnection()
+            return;
         }
     }
-    throw new Error("Unable to connect to database.")
 }
 
-/**
- * Get MongoDB database object
- * @return Db object
- */
-export function getDB() : Db {
+let _db : DiscordDatabase = null;
+
+export function getDB() : DiscordDatabase {
     return _db;
 }
 
-export async function addUser(user : User) : Promise<void> {
-    let newUser : DatabaseUser = {
-        ID: user.id,
-        permissions: []
-    };
-    try {
-        await _db.collection("users").insertOne(newUser);
-    } catch (err) {
-        await connect();
-        await _db.collection("users").insertOne(newUser);
+/**
+ * Class holding the base database and modification/fetching functions
+ */
+export class DiscordDatabase {
+    _db: BaseDatabase;
+
+    constructor(database: BaseDatabase) {
+        _db = this;
+        this._db = database;
     }
-}
 
-export async function removeUser(user : User) : Promise<void> {
-    let deletedUser : { ID: string } = {
-        ID: user.id,
-    };
-    try {
-        await _db.collection("users").deleteOne(deletedUser);
-    } catch (err) {
-        await connect();
-        await _db.collection("users").deleteOne(deletedUser);
+    /**
+     * Start the connection for the database
+     */
+    connect(): Promise<void> {
+        return this._db.startConnection();
     }
-}
 
-export async function addRole(role : Role) : Promise<void> {
-    let newRole : DatabaseRole = {
-        ID: role.id,
-        permissions: []
-    };
-    try {
-        await _db.collection("roles").insertOne(newRole);
-    } catch (err) {
-        await connect();
-        await _db.collection("roles").insertOne(newRole);
+    /**
+     * Database function to add reconnect to
+     * @param databaseFunction Function
+     */
+    _addReconnect<T>(databaseFunction: (...args) => Promise<T>) :  (...args) => (Promise<T>) {
+        let _db = this._db;
+        return async function (...args) {
+            try {
+                return await databaseFunction.call(_db, ...args);
+            } catch (err) {
+                console.error(err);
+                await _db.reconnect();
+                return await databaseFunction.call(_db, ...args);
+            }
+        }
     }
-}
 
-export async function removeRole(role : Role) : Promise<void> {
-    let deletedRole : { ID: string } = {
-        ID: role.id,
-    };
-    try {
-        await _db.collection("roles").deleteOne(deletedRole);
-    } catch (err) {
-        await connect();
-        await _db.collection("roles").deleteOne(deletedRole);
+    /**
+     * Get users and roles from database
+     */
+    async getUsersAndRoles(): Promise<{ users: string[], roles: string[] }> {
+        let userPromise = this._db.find({}, DatabaseCollection.USERS);
+        let rolePromise = this._db.find({}, DatabaseCollection.ROLES);
+        let [users, roles] = (await Promise.all([userPromise, rolePromise]))
+            .map(promise => promise.map(item => item.ID));
+        return {
+            users: users,
+            roles: roles
+        };
     }
-}
 
-export type DatabaseUser = {
-    ID: string,
-    permissions: string[]
-}
+    /**
+     * Generate objects from item(s) using mapping function
+     * @param item Item(s) to process
+     * @param mappingFunction Mapping function to return value
+     */
+    generateDatabaseItems<T>(item: T | T[], mappingFunction: (T) => (DatabaseItem)): DatabaseItem | DatabaseItem[] {
+        // Apply function directly if only one item
+        if (!Array.isArray(item)) {
+            return mappingFunction(item);
+        }
 
-export type DatabaseRole = {
-    ID: string,
-    permissions: string[]
+        // Map if multiple items present
+        return item.map(i => mappingFunction(i));
+    }
+
+    /**
+     * Add user to database
+     * @param userID User ID(s)
+     */
+    async addUser(userID: string | string[]): Promise<void> {
+        let items = this.generateDatabaseItems(userID, generateEmptyDiscordPermissionObject) as unknown as JSONValue;
+        await this._addReconnect(this._db.insert)(items, DatabaseCollection.USERS);
+    }
+
+    /**
+     * Remove user from database
+     * @param userID User ID(s)
+     */
+    async removeUser(userID: string | string[]): Promise<void> {
+        let items = this.generateDatabaseItems(userID, generateEmptyDiscordItemObject) as unknown as JSONValue;
+        await this._addReconnect(this._db.delete)(items, DatabaseCollection.USERS);
+    }
+
+    /**
+     * Add role to database
+     * @param roleID Role ID(s)
+     */
+    async addRole(roleID: string | string[]): Promise<void> {
+        let items = this.generateDatabaseItems(roleID, generateEmptyDiscordPermissionObject);
+        await this._addReconnect(this._db.insert)(items, DatabaseCollection.ROLES);
+    }
+
+    /**
+     * Remove role from database
+     * @param roleID Role ID(s)
+     */
+    async removeRole(roleID: string | string[]): Promise<void> {
+        let items = this.generateDatabaseItems(roleID, generateEmptyDiscordItemObject);
+        await this._addReconnect(this._db.delete)(items, DatabaseCollection.ROLES);
+    }
+
+    /**
+     * Get user from database
+     * @param userID User ID(s)
+     */
+    async getUser(userID: string | string[]): Promise<DatabaseUser[]> {
+        let items = this.generateDatabaseItems(userID, generateEmptyDiscordItemObject);
+        return await this._addReconnect(this._db.find)(items, DatabaseCollection.USERS) as unknown as DatabaseUser[];
+    }
+
+    /**
+     * Get role from database
+     * @param roleID Role ID(s)
+     */
+    async getRole(roleID: string | string[]): Promise<DatabaseRole[]> {
+        let items = this.generateDatabaseItems(roleID, generateEmptyDiscordItemObject);
+        return await this._addReconnect(this._db.find)(items, DatabaseCollection.ROLES) as unknown as DatabaseRole[];
+    }
+
+    /**
+     * Add permission to user
+     * @param userID User ID
+     * @param permission Permission to add
+     */
+    async addUserPermission(userID: string, permission: string): Promise<void> {
+        let items = this.generateDatabaseItems(userID, generateEmptyDiscordItemObject);
+        if ("pushToArray" in this._db) {
+            await this._addReconnect(this._db.pushToArray)(items, DatabaseItemProperties.PERMISSIONS, permission, DatabaseCollection.USERS);
+            return;
+        }
+        let currentItem : DatabaseUser[] = await this._addReconnect(this._db.find)(items, DatabaseCollection.USERS) as DatabaseUser[];
+        if (currentItem.length !== 1) return;
+        let newItem = currentItem[0];
+        newItem.permissions.push(permission);
+        await this._addReconnect(this._db.update)(items, DatabaseItemProperties.PERMISSIONS, newItem.permissions, DatabaseCollection.USERS);
+    }
+
+    /**
+     * Remove permission from user
+     * @param userID User ID
+     * @param permission Permission to remove
+     */
+    async deleteUserPermission(userID: string, permission: string): Promise<void> {
+        let items = this.generateDatabaseItems(userID, generateEmptyDiscordItemObject);
+        if ("deleteFromArray" in this._db) {
+            await this._addReconnect(this._db.removeFromArray)(items, DatabaseItemProperties.PERMISSIONS, permission, DatabaseCollection.USERS);
+            return;
+        }
+        let currentItem : DatabaseUser[] = await this._addReconnect(this._db.find)(items, DatabaseCollection.USERS) as DatabaseUser[];
+        if (currentItem.length !== 1) return;
+        let newPermissions = currentItem[0].permissions
+            .filter((perm) => perm !== permission);
+        await this._addReconnect(this._db.update)(items, DatabaseItemProperties.PERMISSIONS, newPermissions, DatabaseCollection.USERS);
+    }
+
+    /**
+     * Add permission to role
+     * @param roleID Role ID
+     * @param permission Permission to add
+     */
+    async addRolePermission(roleID: string, permission: string): Promise<void> {
+        let items = this.generateDatabaseItems(roleID, generateEmptyDiscordItemObject);
+        if (this._db.pushToArray) {
+            await this._addReconnect(this._db.pushToArray)(items, DatabaseItemProperties.PERMISSIONS, permission, DatabaseCollection.ROLES);
+            return;
+        }
+        let currentItem : DatabaseRole[] = await this._addReconnect(this._db.find)(items, DatabaseCollection.ROLES) as DatabaseRole[];
+        if (currentItem.length !== 1) return;
+        let newItem = currentItem[0];
+        newItem.permissions.push(permission);
+        await this._addReconnect(this._db.update)(items, DatabaseItemProperties.PERMISSIONS, newItem.permissions, DatabaseCollection.ROLES);
+    }
+
+    /**
+     * Remove permission from role
+     * @param roleID Role ID
+     * @param permission Permission to remove
+     */
+    async deleteRolePermission(roleID: string, permission: string): Promise<void> {
+        let items = this.generateDatabaseItems(roleID, generateEmptyDiscordItemObject);
+        if (this._db.removeFromArray) {
+            await this._addReconnect(this._db.removeFromArray)(items, DatabaseItemProperties.PERMISSIONS, permission, DatabaseCollection.ROLES);
+            return;
+        }
+        let currentItem : DatabaseRole[] = await this._addReconnect(this._db.find)(items, DatabaseCollection.ROLES) as DatabaseRole[];
+        if (currentItem.length !== 1) return;
+        let newItem = currentItem[0];
+        newItem.permissions.filter((perm: string) => perm !== permission);
+        await this._addReconnect(this._db.update)(items, DatabaseItemProperties.PERMISSIONS, newItem.permissions, DatabaseCollection.ROLES);
+    }
 }

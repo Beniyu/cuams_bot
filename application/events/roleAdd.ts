@@ -1,12 +1,12 @@
 import {Role} from "discord.js";
-import {addRole} from "../database";
+import {getDB} from "../database";
 
 module.exports = {
     name: "roleCreate",
     once: false,
     execute: (role : Role) => {
-        addRole(role)
-            .then((data) => {
+        getDB().addRole(role.id)
+            .then(() => {
                 console.log("Role added. " + role.name);
             })
             .catch((error) => {

@@ -32,11 +32,9 @@ switch (nodeEnvironment) {
 const { botSecretKey, applicationID, guildID, databaseName, databaseUri } = require(botSecretKeyFile);
 const client = new discordClient_js_1.DiscordClient({ intents: [Discord.Intents.FLAGS.GUILDS, Discord.Intents.FLAGS.GUILD_MEMBERS]
 });
-(0, database_1.assignCredentials)(databaseUri, databaseName);
-let dbPromise = (0, database_1.connect)()
-    .then((data) => {
-    (0, database_1.getDB)().command({ ping: 1 });
-});
+const baseDatabase = new database_1.MongoDatabase(databaseUri, databaseName);
+const database = new database_1.DiscordDatabase(baseDatabase);
+let dbPromise = database.connect();
 const rest = new rest_1.REST({ version: '9' }).setToken(botSecretKey);
 let commandFiles = (0, fs_1.readdirSync)("./commands")
     .filter(fileName => fileName.endsWith(".js"));
@@ -64,14 +62,14 @@ client.once('ready', () => {
     console.log("Ready!");
 });
 dbPromise
-    .then((data) => {
+    .then(() => {
     console.log("Successfully connected to database. ");
     return client.login(botSecretKey);
 })
-    .then((data) => {
-    return (0, bootupScripts_1.synchronizeUsersAndRoles)(client, guildID, (0, database_1.getDB)());
+    .then(() => {
+    return (0, bootupScripts_1.synchronizeUsersAndRoles)(client, guildID, database);
 })
-    .then((data) => {
+    .then(() => {
     console.log("Client connected.");
 })
     .catch((error) => {

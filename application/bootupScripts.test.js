@@ -3,9 +3,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const bootupScripts_1 = require("./bootupScripts");
 const Discord = require("discord.js");
 const ts_jest_1 = require("ts-jest");
+const database_1 = require("./database");
 test('Test if synchronization of dummy client and database possible', async () => {
-    let addedUsers;
-    let deletedUsers;
     let discordData = new Discord.Collection();
     discordData.set("0", null);
     discordData.set("1", null);
@@ -14,77 +13,90 @@ test('Test if synchronization of dummy client and database possible', async () =
     let client = {
         guilds: {
             fetch: async function (guildID) {
-                return {
-                    members: {
-                        fetch: function () {
-                            return new Promise((accept, reject) => {
-                                setTimeout(() => {
-                                    accept(discordData);
-                                }, 100);
-                            });
-                        }
-                    },
-                    roles: {
-                        fetch: function () {
-                            return new Promise((accept, reject) => {
-                                setTimeout(() => {
-                                    accept(discordData);
-                                }, 100);
-                            });
-                        }
-                    }
-                };
-            }
-        }
-    };
-    let database = {
-        collection: function (collectionName) {
-            if (collectionName === "users" || collectionName === "roles") {
-                return {
-                    find: function (arg1, arg2) {
-                        return {
-                            forEach: function (arg) {
-                                return new Promise((accept, reject) => {
-                                    for (let i = 2; i <= 5; i++) {
-                                        arg({
-                                            ID: i.toString(),
-                                            permissions: []
-                                        });
-                                    }
-                                    setTimeout(() => accept(), 100);
+                if (guildID === "dummy")
+                    return {
+                        members: {
+                            fetch: function () {
+                                return new Promise((accept) => {
+                                    setTimeout(() => {
+                                        accept(discordData);
+                                    }, 100);
                                 });
                             }
-                        };
-                    },
-                    insertMany: function (arg) {
-                        addedUsers = arg;
-                    },
-                    deleteMany: function (arg) {
-                        deletedUsers = arg;
-                    }
-                };
+                        },
+                        roles: {
+                            fetch: function () {
+                                return new Promise((accept) => {
+                                    setTimeout(() => {
+                                        accept(discordData);
+                                    }, 100);
+                                });
+                            }
+                        }
+                    };
             }
-            fail("Incorrect collection name");
         }
     };
-    await (0, bootupScripts_1.synchronizeUsersAndRoles)(client, "dummy", database);
-    expect((0, ts_jest_1.stringify)(addedUsers)).toBe((0, ts_jest_1.stringify)([
-        {
-            ID: "0",
-            permissions: []
-        },
-        {
-            ID: "1",
-            permissions: []
+    class DummyDatabase {
+        constructor() {
+            this.users = new Map();
+            this.roles = new Map();
         }
-    ]));
-    expect((0, ts_jest_1.stringify)(deletedUsers)).toBe((0, ts_jest_1.stringify)([
-        {
-            ID: "4"
-        },
-        {
-            ID: "5"
+        delete(item, collectionName) {
+            if (Array.isArray(item)) {
+                for (let single of item) {
+                    this.delete(single, collectionName);
+                }
+                return Promise.resolve(undefined);
+            }
+            switch (collectionName) {
+                case database_1.DatabaseCollection.USERS:
+                    this.users.delete(item.ID);
+                    break;
+                case database_1.DatabaseCollection.ROLES:
+                    this.roles.delete(item.ID);
+                    break;
+            }
+            return Promise.resolve(undefined);
         }
-    ]));
+        find(query, collectionName) {
+            let items = Array.from(this[collectionName].values());
+            return Promise.resolve(items);
+        }
+        insert(item, collectionName) {
+            if (Array.isArray(item)) {
+                for (let single of item) {
+                    this.insert(single, collectionName);
+                }
+                return Promise.resolve(undefined);
+            }
+            switch (collectionName) {
+                case database_1.DatabaseCollection.USERS:
+                    this.users.set(item.ID, item);
+                    break;
+                case database_1.DatabaseCollection.ROLES:
+                    this.roles.set(item.ID, item);
+                    break;
+            }
+            return Promise.resolve(undefined);
+        }
+        reconnect() {
+            return Promise.resolve(undefined);
+        }
+        startConnection() {
+            return Promise.resolve(undefined);
+        }
+        update(query, values, collectionName) {
+            return Promise.resolve(undefined);
+        }
+    }
+    let dummyDatabase = new DummyDatabase();
+    for (let i = 2; i <= 5; i++) {
+        await dummyDatabase.insert({ ID: i.toString(), permissions: [] }, database_1.DatabaseCollection.USERS);
+    }
+    let dummyDiscordDatabase = new database_1.DiscordDatabase(dummyDatabase);
+    await (0, bootupScripts_1.synchronizeUsersAndRoles)(client, "dummy", dummyDiscordDatabase);
+    let { users } = await dummyDiscordDatabase.getUsersAndRoles();
+    expect((0, ts_jest_1.stringify)(users.sort())).toBe((0, ts_jest_1.stringify)(["0", "1", "2", "3"].sort()));
 });
 //# sourceMappingURL=bootupScripts.test.js.map

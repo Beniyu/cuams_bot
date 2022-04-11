@@ -3,43 +3,23 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.synchronizeUsersAndRoles = void 0;
 async function synchronizeUsersAndRoles(client, guildID, database) {
     const discordPromise = getGuildData(client, guildID);
-    const databasePromise = getDatabaseData(database);
+    const databasePromise = database.getUsersAndRoles();
     const IDs = await Promise.all([discordPromise, databasePromise]);
     const discordData = IDs[0];
     const databaseData = IDs[1];
     let databaseFinalPromises = [];
-    for (let dataPart of [{ index: "users", databaseName: "users" }, { index: "roles", databaseName: "roles" }]) {
-        const missingDatabaseData = discordData[dataPart.index].filter(member => !(databaseData[dataPart.index].includes(member)));
-        const missingDiscordData = databaseData[dataPart.index].filter(member => !(discordData[dataPart.index].includes(member)));
-        let newDatabaseData;
-        switch (dataPart.databaseName) {
+    for (let dataPart of ["users", "roles"]) {
+        const missingDatabaseData = discordData[dataPart].filter(member => !(databaseData[dataPart].includes(member)));
+        const missingDiscordData = databaseData[dataPart].filter(member => !(discordData[dataPart].includes(member)));
+        switch (dataPart) {
             case "users":
-                newDatabaseData = missingDatabaseData.map(member => {
-                    return {
-                        ID: member,
-                        permissions: []
-                    };
-                });
+                databaseFinalPromises.push(database.addUser(missingDatabaseData));
+                databaseFinalPromises.push(database.removeUser(missingDiscordData));
                 break;
             case "roles":
-                newDatabaseData = missingDatabaseData.map(member => {
-                    return {
-                        ID: member,
-                        permissions: []
-                    };
-                });
+                databaseFinalPromises.push(database.addRole(missingDatabaseData));
+                databaseFinalPromises.push(database.removeRole(missingDiscordData));
                 break;
-        }
-        const leavingDatabaseData = missingDiscordData.map(id => {
-            return {
-                ID: id
-            };
-        });
-        if (newDatabaseData.length != 0) {
-            databaseFinalPromises.push(database.collection(dataPart.databaseName).insertMany(newDatabaseData));
-        }
-        if (leavingDatabaseData.length != 0) {
-            databaseFinalPromises.push(database.collection(dataPart.databaseName).deleteMany(leavingDatabaseData));
         }
     }
     await Promise.all(databaseFinalPromises);
@@ -52,25 +32,6 @@ async function getGuildData(client, guildID) {
     return {
         users: Array.from(memberCollection.keys()),
         roles: Array.from(roleCollection.keys())
-    };
-}
-async function getDatabaseData(database) {
-    let databaseMembers = [];
-    let databaseRoles = [];
-    let userPromise = database.collection("users")
-        .find({}, { projection: { ID: 1 } })
-        .forEach(user => {
-        databaseMembers.push(user.ID);
-    });
-    let rolePromise = database.collection("roles")
-        .find({}, { projection: { ID: 1 } })
-        .forEach(role => {
-        databaseRoles.push(role.ID);
-    });
-    await Promise.all([userPromise, rolePromise]);
-    return {
-        users: databaseMembers,
-        roles: databaseRoles
     };
 }
 //# sourceMappingURL=bootupScripts.js.map

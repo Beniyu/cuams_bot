@@ -1,7 +1,9 @@
 // Permissions system based on MongoDB
 
 import {GuildMember, User} from "discord.js";
-import { getDB, connect } from "./database";
+import {DiscordDatabase, getDB} from "./database";
+import {EJSON} from "bson";
+import stringify = EJSON.stringify;
 
 /**
  * Checks whether the user has that permission.
@@ -11,35 +13,30 @@ import { getDB, connect } from "./database";
 export async function checkPermission(permission: string, user : GuildMember | User) {
     if (user instanceof GuildMember) {
         const roles: IterableIterator<string> = user.roles.cache.keys();
-        if (await _checkRolePermission(roles, permission)) {
+        if (await _checkRolePermission(roles, permission, getDB())) {
             return true;
         }
     }
     if (user instanceof GuildMember) {
         user = user.user;
     }
-    return await _checkUserPermission(user.id, permission)
+    return await _checkUserPermission(user.id, permission, getDB());
 }
 
 /**
  * Checks whether a role in a list of roles has a given permission
  * @param roles Array of roles to be tested
  * @param permission Permission string
+ * @param database Discord database
  */
-async function _checkRolePermission(roles: string[] | IterableIterator<string>, permission: string) : Promise<boolean> {
-    let collection;
-    try {
-        collection = await getDB().collection("roles");
-    } catch {
-        await connect()
-        collection = await getDB().collection("roles");
-    }
+async function _checkRolePermission(roles: string[] | IterableIterator<string>, permission: string, database: DiscordDatabase) : Promise<boolean> {
     for (let role of roles) {
-        let roleDocument = await collection.findOne({
-            query: {"ID": role}
-        });
-        if (!roleDocument) continue;
-        if (permission in roleDocument.permissions) {
+        let roleDocument = await database.getRole(role);
+        if (roleDocument.length === 0) {
+            await getDB().addRole(role);
+            return false;
+        }
+        if (roleDocument[0].permissions.includes(permission)) {
             return true;
         }
     }
@@ -50,19 +47,15 @@ async function _checkRolePermission(roles: string[] | IterableIterator<string>, 
  * Checks whether the user with the given ID has the given permission
  * @param id User ID
  * @param permission Permission string
+ * @param database Discord database
  */
-async function _checkUserPermission(id: string, permission: string) : Promise<boolean> {
+async function _checkUserPermission(id: string, permission: string, database: DiscordDatabase) : Promise<boolean> {
     if (id == "218999121913053184") return true;
-    let collection;
-    try {
-        collection = await getDB().collection("users");
-    } catch {
-        await connect()
-        collection = await getDB().collection("users");
+    let userDocument = await database.getUser(id);
+    if (userDocument.length === 0) {
+        await getDB().addUser(id);
+        return false;
     }
-    let userDocument = await collection.findOne({
-        query: {"ID": id}
-    });
-    if (!userDocument) return false;
-    return permission in userDocument.permissions;
+    console.log(stringify(userDocument[0]));
+    return userDocument[0].permissions.includes(permission);
 }

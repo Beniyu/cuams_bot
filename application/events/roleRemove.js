@@ -5,8 +5,8 @@ module.exports = {
     name: "roleDelete",
     once: false,
     execute: (role) => {
-        (0, database_1.removeRole)(role)
-            .then((data) => {
+        (0, database_1.getDB)().removeRole(role.id)
+            .then(() => {
             console.log("Role deleted. " + role.name);
         })
             .catch((error) => {
