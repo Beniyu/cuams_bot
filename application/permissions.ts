@@ -11,10 +11,12 @@ import {DiscordDatabase, getDB} from "./database";
  * @param user User as GuildMember (hence can use role check) or User
  */
 export async function checkPermission(permission: string, user : GuildMember | User) {
+    const allValidPermissions = getAllPermissions(permission);
+
     if (user instanceof GuildMember) {
         // Iterate over all of user's roles
         const roles: IterableIterator<string> = user.roles.cache.keys();
-        if (await _checkRolePermission(roles, permission, getDB())) {
+        if (await _checkRolePermission(roles, allValidPermissions, getDB())) {
             return true;
         }
     }
@@ -23,7 +25,7 @@ export async function checkPermission(permission: string, user : GuildMember | U
         user = user.user;
     }
     // Check user's specific permissions if permissions not found in role
-    return _checkUserPermission(user.id, permission, getDB());
+    return _checkUserPermission(user.id, allValidPermissions, getDB());
 }
 
 /**
@@ -32,7 +34,7 @@ export async function checkPermission(permission: string, user : GuildMember | U
  * @param permission Permission string
  * @param database Discord database
  */
-async function _checkRolePermission(roles: string[] | IterableIterator<string>, permission: string, database: DiscordDatabase) : Promise<boolean> {
+async function _checkRolePermission(roles: string[] | IterableIterator<string>, permission: string[] , database: DiscordDatabase) : Promise<boolean> {
     for (let role of roles) {
         // Get role document
         let roleDocument = await database.getRole(role);
@@ -41,9 +43,10 @@ async function _checkRolePermission(roles: string[] | IterableIterator<string>, 
             await getDB().addRole(role);
             return false;
         }
+
         // Return true if permission found in roles
-        if (roleDocument[0].permissions.includes(permission)) {
-            return true;
+        for (let ownPermission of roleDocument[0].permissions) {
+            if (permission.includes(ownPermission)) return true;
         }
     }
     return false;
@@ -55,7 +58,7 @@ async function _checkRolePermission(roles: string[] | IterableIterator<string>, 
  * @param permission Permission string
  * @param database Discord database
  */
-async function _checkUserPermission(id: string, permission: string, database: DiscordDatabase) : Promise<boolean> {
+async function _checkUserPermission(id: string, permission: string[], database: DiscordDatabase) : Promise<boolean> {
     // Beniyu has all permissions hard-coded in
     if (id == "218999121913053184") return true;
 
@@ -69,5 +72,28 @@ async function _checkUserPermission(id: string, permission: string, database: Di
     }
 
     // Check if user has permission
-    return userDocument[0].permissions.includes(permission);
+    for (let ownPermission of userDocument[0].permissions) {
+        if (permission.includes(ownPermission)) return true;
+    }
+}
+
+/**
+ * Return all valid permissions for a given permission
+ * @param permission Permission string
+ * @return All valid permissions
+ */
+export function getAllPermissions(permission: string) : string[] {
+    let currentString = '';
+    let validPermissions : string[] = ['*'];
+    let permissionSegments : string[] = permission.split('.');
+
+    for (let segment of permissionSegments) {
+        currentString += segment + '.';
+        validPermissions.push(currentString + "*");
+    }
+
+    validPermissions.pop();
+    validPermissions.push(permission);
+
+    return validPermissions;
 }

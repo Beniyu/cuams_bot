@@ -14,7 +14,7 @@ module.exports = {
                 console.log("User added. " + member.displayName);
             })
             .catch((error) => {
-                console.error(error);
+                console.error("Error while handling new user: " + error);
             });
     }
 };

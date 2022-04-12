@@ -27,10 +27,14 @@ module.exports = {
             } catch (error) {
                 // Reply with error if failure during execution
                 console.error(error);
-                await interaction.reply({
-                    content: "500: An error occurred while executing this command.",
-                    ephemeral: true
-                });
+                try {
+                    await interaction.reply({
+                        content: "500: An error occurred while executing this command.",
+                        ephemeral: true
+                    });
+                } catch {
+                    console.error("Failure response timed out.");
+                }
             }
         } else {
             await interaction.reply({

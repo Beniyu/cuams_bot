@@ -2,7 +2,7 @@
  * @file File containing functions related to database operations
  */
 
-import { MongoClient, Db } from "mongodb";
+import {Db, MongoClient} from "mongodb";
 
 /**
  * All database collections
@@ -16,7 +16,7 @@ export enum DatabaseCollection {
  * Every possible field in a database item
  */
 export enum DatabaseItemProperties {
-    ID = "ID",
+    ID = "_id",
     PERMISSIONS = "permissions"
 }
 
@@ -24,7 +24,7 @@ export enum DatabaseItemProperties {
  * Basic database item
  */
 export interface DatabaseItem {
-    ID: string
+    _id: string
 }
 
 /**
@@ -130,9 +130,9 @@ export interface BaseDatabase {
  * Generate basic Database item object with permissions
  * @param id Discord ID
  */
-function generateEmptyDiscordPermissionObject(id: string) {
+function generateEmptyDiscordPermissionObject(id: string) : DatabaseUser | DatabaseRole {
     return {
-        ID: id,
+        "_id": id,
         permissions: []
     };
 }
@@ -141,9 +141,9 @@ function generateEmptyDiscordPermissionObject(id: string) {
  * Generates object with only an ID field
  * @param id Discord ID
  */
-function generateEmptyDiscordItemObject(id: string) {
+function generateEmptyDiscordItemObject(id: string) : DatabaseItem {
     return {
-        ID: id
+        "_id": id
     };
 }
 
@@ -166,9 +166,13 @@ export class MongoDatabase extends MongoClient implements BaseDatabase {
         // insertMany for arrays, insertOne for single item
         if (Array.isArray(item)) {
             if (item.length === 0) return;
+            // Ignore type here because insertMany requires that _id is ObjectId, but mongodb allows any BSON value for the _id field
+            // @ts-ignore
             await this._db.collection(collectionName).insertMany(item);
             return;
         }
+        // Ignore type here because insertMany requires that _id is ObjectId, but mongodb allows any BSON value for the _id field
+        // @ts-ignore
         await this._db.collection(collectionName).insertOne(item);
     }
 
@@ -208,7 +212,7 @@ export class MongoDatabase extends MongoClient implements BaseDatabase {
             updateObject[property] = values;
         }
         // Push items to set using updateMany
-        await this._db.collection(collectionName).updateMany(query, { "addToSet" : updateObject});
+        await this._db.collection(collectionName).updateMany(query, { "$addToSet" : updateObject});
     }
 
     async removeFromArray(query: Object, property: string, values: JSONValue[] | JSONValue, collectionName: DatabaseCollection) : Promise<void> {
@@ -229,7 +233,7 @@ export class MongoDatabase extends MongoClient implements BaseDatabase {
     async startConnection(): Promise<void> {
 
         // Allow X connection attempts
-        let retries = 3;
+        let retries = 5;
 
         // Wait if already connecting
         if (this._starting)
@@ -254,7 +258,7 @@ export class MongoDatabase extends MongoClient implements BaseDatabase {
                 } catch(err) {
                     // Wait 500ms between connection attempts
                     console.error(err);
-                    await new Promise(r => setTimeout(r, 500));
+                    await new Promise(r => setTimeout(r, 30000));
                 }
             }
             reject("Unable to connect to database.");
@@ -263,11 +267,11 @@ export class MongoDatabase extends MongoClient implements BaseDatabase {
 
     async reconnect() : Promise<void> {
         // Check if database alive before reconnecting by pinging
-        this._db.command({ping: 1})
+        await this._db.command({ping: 1})
             .catch(async (err) => {
                 console.error("Error confirmed at reconnection: " + err);
                 // Restart database if no connection
-                await this.startConnection()
+                return this.startConnection()
             });
     }
 }
@@ -306,13 +310,14 @@ export class DiscordDatabase {
         let _db = this._db;
         return async function (...args) {
             try {
-                return databaseFunction.call(_db, ...args);
-            } catch (err) {
-                console.error(err);
+                // return await intentional
+                return await databaseFunction.call(_db, ...args);
+            } catch {
                 await _db.reconnect();
-                return databaseFunction.call(_db, ...args);
+                // return await intentional
+                return await databaseFunction.call(_db, ...args);
             }
-        }
+        };
     }
 
     /**
@@ -324,7 +329,7 @@ export class DiscordDatabase {
         let rolePromise = this._db.find({}, DatabaseCollection.ROLES);
         // Wait until both resolve
         let [users, roles] = (await Promise.all([userPromise, rolePromise]))
-            .map(promise => promise.map(item => item.ID));
+            .map(promise => promise.map(item => item._id));
         // Provide IDs in return
         return {
             users: users,

@@ -27,10 +27,10 @@ export class DummyDatabase implements BaseDatabase {
         }
         switch (collectionName) {
             case DatabaseCollection.USERS:
-                this.users.delete(item.ID);
+                this.users.delete(item._id);
                 break;
             case DatabaseCollection.ROLES:
-                this.roles.delete(item.ID);
+                this.roles.delete(item._id);
                 break;
         }
         return Promise.resolve(undefined);
@@ -50,10 +50,10 @@ export class DummyDatabase implements BaseDatabase {
         }
         switch (collectionName) {
             case DatabaseCollection.USERS:
-                this.users.set(item.ID, item);
+                this.users.set(item._id, item);
                 break;
             case DatabaseCollection.ROLES:
-                this.roles.set(item.ID, item);
+                this.roles.set(item._id, item);
                 break;
         }
         return Promise.resolve(undefined);
@@ -111,7 +111,7 @@ test('Test if synchronization of dummy client and database possible', async () =
     // Create dummy database that extends BaseDatabase
     let dummyDatabase = new DummyDatabase();
     for (let i = 2; i <= 5; i++) {
-        await dummyDatabase.insert({ID: i.toString(), permissions: []} as DatabaseUser, DatabaseCollection.USERS);
+        await dummyDatabase.insert({_id: i.toString(), permissions: []} as DatabaseUser, DatabaseCollection.USERS);
     }
 
     // Create discord database using dummy database

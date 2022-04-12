@@ -14,7 +14,7 @@ module.exports = {
                 console.log("Role added. " + role.name);
             })
             .catch((error) => {
-                console.error(error);
+                console.error("Error while handling new role: " + error);
             });
     }
 };
