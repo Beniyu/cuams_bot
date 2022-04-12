@@ -22,7 +22,6 @@ fs.readFile(databaseCredentialsFile, (err1, data) => {
 	var MongoClient = require('mongodb').MongoClient;
 	var url = "mongodb://" + credentials.username + ":" + credentials.password + "@docker:27017/" + databaseName;
 	MongoClient.connect(url, (err2, client) => {
-		//let db = client.db(databaseName);
 		client.close();
 	});
 });

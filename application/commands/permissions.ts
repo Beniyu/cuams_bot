@@ -31,7 +31,7 @@ module.exports = {
                 .setDescription('Get all specific permissions of user/role')
                 .addMentionableOption(option => option.setName('target').setDescription('The user/role'))),
     async execute(interaction: CommandInteraction) {
-        let subcommand : ValidPermissionSubcommand = interaction.options.getString('permission') as ValidPermissionSubcommand;
+        let subcommand : ValidPermissionSubcommand = interaction.options.getSubcommand() as ValidPermissionSubcommand;
         let mentionable = interaction.options.getMentionable('target');
         let permission = interaction.options.getString('permission');
 
@@ -45,14 +45,14 @@ module.exports = {
             return;
         }
 
-        if (!(subcommand !== "get") && !permission) {
+        if ((subcommand !== "get")  && !permission) {
             await interaction.reply({content:"Must specify permission.", ephemeral: true});
             return;
         }
 
         let type = mentionable instanceof User || mentionable instanceof GuildMember ? Mentionable.USER : Mentionable.ROLE;
 
-        switch (interaction.options.getSubcommand()) {
+        switch (subcommand) {
             case 'add':
                 await addPermission(interaction, mentionable.id, permission, type);
                 break;

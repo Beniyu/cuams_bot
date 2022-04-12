@@ -27,7 +27,7 @@ module.exports = {
         .setDescription('Get all specific permissions of user/role')
         .addMentionableOption(option => option.setName('target').setDescription('The user/role'))),
     async execute(interaction) {
-        let subcommand = interaction.options.getString('permission');
+        let subcommand = interaction.options.getSubcommand();
         let mentionable = interaction.options.getMentionable('target');
         let permission = interaction.options.getString('permission');
         if (!mentionable) {
@@ -38,12 +38,12 @@ module.exports = {
             await interaction.reply({ content: "Invalid user.", ephemeral: true });
             return;
         }
-        if (!(subcommand !== "get") && !permission) {
+        if ((subcommand !== "get") && !permission) {
             await interaction.reply({ content: "Must specify permission.", ephemeral: true });
             return;
         }
         let type = mentionable instanceof discord_js_1.User || mentionable instanceof discord_js_1.GuildMember ? Mentionable.USER : Mentionable.ROLE;
-        switch (interaction.options.getSubcommand()) {
+        switch (subcommand) {
             case 'add':
                 await addPermission(interaction, mentionable.id, permission, type);
                 break;
