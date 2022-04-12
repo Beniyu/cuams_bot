@@ -2,7 +2,7 @@ import * as Discord from "discord.js";
 import { REST } from "@discordjs/rest";
 import { Routes } from 'discord-api-types/v9';
 import { readdirSync } from "fs";
-import { DiscordClient, DiscordCommand } from  "./discordClient.js";
+import { DiscordClient, DiscordCommand } from  "./discordClient";
 import {MongoDatabase, DiscordDatabase, BaseDatabase} from "./database";
 import {synchronizeUsersAndRoles} from "./bootupScripts";
 
