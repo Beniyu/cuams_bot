@@ -4,7 +4,7 @@
   "description": "A bot to manage the CUAMS discord server.",
   "main": "server.js",
   "scripts": {
-    "test": "ts-jest"
+    "test": "jest"
   },
   "repository": {
     "type": "git",
@@ -28,8 +28,5 @@
     "jest": "^27.5.1",
     "jest-sonar-reporter": "^2.0.0",
     "ts-jest": "^27.1.4"
-  },
-  "jest": {
-    "testResultsProcessor": "jest-sonar-reporter"
   }
 }

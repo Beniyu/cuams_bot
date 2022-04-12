@@ -108,3 +108,6 @@ dist
 
 # Credentials
 config.json
+
+# Test coverage
+test-report.xml
