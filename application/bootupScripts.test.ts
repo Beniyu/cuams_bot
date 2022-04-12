@@ -1,10 +1,15 @@
+/**
+ * Test file for bootupScript.ts
+ */
 import {synchronizeUsersAndRoles} from "./bootupScripts";
 import * as Discord from "discord.js";
 import {stringify} from "ts-jest";
 import {BaseDatabase, DatabaseCollection, DatabaseItem, DatabaseUser, DiscordDatabase, JSONValue} from "./database";
+import {DiscordClient} from "./discordClient";
 
 // Create dummy database object containing all necessary methods
 export class DummyDatabase implements BaseDatabase {
+    // Users maps to store data
     users : Map<string,DatabaseItem>;
     roles : Map<string,DatabaseItem>;
     constructor() {
@@ -12,6 +17,7 @@ export class DummyDatabase implements BaseDatabase {
         this.roles = new Map();
     }
 
+    // Translate all database functions to Map methods
     delete(item: DatabaseItem | Array<DatabaseItem>, collectionName: DatabaseCollection): Promise<void> {
         if (Array.isArray(item)) {
             for (let single of item) {
@@ -102,17 +108,21 @@ test('Test if synchronization of dummy client and database possible', async () =
         }
     }
 
+    // Create dummy database that extends BaseDatabase
     let dummyDatabase = new DummyDatabase();
     for (let i = 2; i <= 5; i++) {
         await dummyDatabase.insert({ID: i.toString(), permissions: []} as DatabaseUser, DatabaseCollection.USERS);
     }
 
+    // Create discord database using dummy database
     let dummyDiscordDatabase = new DiscordDatabase(dummyDatabase);
 
     // Run the function
-    // @ts-ignore
-    await synchronizeUsersAndRoles(client, "dummy", dummyDiscordDatabase);
+    await synchronizeUsersAndRoles(client as DiscordClient, "dummy", dummyDiscordDatabase);
+
+    // Get users
     let {users} = await dummyDiscordDatabase.getUsersAndRoles();
+    // Sort users
     users.sort();
     // Check if data is split as expected
     expect(stringify(users)).toBe(stringify(["0","1","2","3"]));

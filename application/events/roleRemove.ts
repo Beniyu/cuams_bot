@@ -1,3 +1,7 @@
+/**
+ * @file Event handler for role deletion
+ * Removes role from database
+ */
 import {Role} from "discord.js";
 import {getDB} from "../database";
 

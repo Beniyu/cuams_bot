@@ -38,5 +38,4 @@ prompt.get(['username', 'password'], function(err, result) {
 			]}
 		, function(err2) { console.error(err2); db.close(); } );
 	});
-	
 });

@@ -1,3 +1,7 @@
+/**
+ * @file The implementation of the /ping command
+ * Responds with "Pong!"
+ */
 import {CommandInteraction} from "discord.js";
 import {SlashCommandBuilder} from "@discordjs/builders";
 

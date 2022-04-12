@@ -1,3 +1,7 @@
+/**
+ * @file Event handler for role addition
+ * Adds role to database
+ */
 import {Role} from "discord.js";
 import {getDB} from "../database";
 

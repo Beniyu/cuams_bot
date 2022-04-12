@@ -16,6 +16,5 @@ prompt.get(['username', 'password'], function(err, result) {
 		db2.dropDatabase();
 		db2.removeUser("botuser", function(err2) { console.error(err2); db.close(); });
 	});
-	
 });
 

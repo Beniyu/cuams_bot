@@ -1,3 +1,7 @@
+/**
+ * @file File containing functions related to discord client and its extended properties
+ */
+
 import {Client, ClientOptions, Collection, CommandInteraction} from "discord.js";
 import {SlashCommandBuilder} from "@discordjs/builders";
 

@@ -1,3 +1,7 @@
+/**
+ * @file Event handler for user addition
+ * Adds user to database
+ */
 import {GuildMember} from "discord.js";
 import {getDB} from "../database";
 

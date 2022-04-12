@@ -1,3 +1,6 @@
+/**
+ * @file File containing functions related to bot startup
+ */
 import {DiscordClient} from "./discordClient";
 import {DiscordDatabase} from "./database";
 import {Collection, Guild, GuildMember, Role} from "discord.js";
@@ -27,6 +30,7 @@ export async function synchronizeUsersAndRoles(client : DiscordClient, guildID :
     // Track database promises to only finish when all are done
     let databaseFinalPromises : Promise<any>[] = [];
 
+    // Check discrepancies between discord and database and fix them
     for (let dataPart of ["users", "roles"]) {
         // Get mismatch from each list
         const missingDatabaseData : string[] = discordData[dataPart].filter(member => !(databaseData[dataPart].includes(member)));
@@ -43,7 +47,7 @@ export async function synchronizeUsersAndRoles(client : DiscordClient, guildID :
         }
     }
 
-    // Accept promise only when changes have been submitted
+    // Resolve promise only when changes have been submitted
     await Promise.all(databaseFinalPromises);
 }
 

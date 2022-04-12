@@ -59,6 +59,7 @@ let commandFiles : string[] = readdirSync("./commands")
 let eventFiles : string[] = readdirSync("./events")
     .filter(fileName => fileName.endsWith(".js"));
 
+// Make command list so that it can be sent to Discord using API
 let commands = [];
 
 // Add commands to client
@@ -68,6 +69,7 @@ commandFiles.forEach(commandFile => {
     client.addCommand(command);
 });
 
+// Event handling file shape
 export type DiscordEvent = {
     name: string,
     once: boolean,

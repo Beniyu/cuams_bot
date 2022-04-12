@@ -1,3 +1,7 @@
+/**
+ * @file Event handler for user deletion
+ * Removes user from database
+ */
 import {GuildMember} from "discord.js";
 import {getDB} from "../database";
 
