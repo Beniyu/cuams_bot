@@ -146,7 +146,6 @@ export class MongoDatabase extends MongoClient implements BaseDatabase {
             return;
         }
         await this._db.collection(collectionName).insertOne(item);
-        return;
     }
 
     async delete(item: DatabaseItem | Array<DatabaseItem>, collectionName: DatabaseCollection): Promise<void> {
@@ -157,7 +156,6 @@ export class MongoDatabase extends MongoClient implements BaseDatabase {
             return;
         }
         await this._db.collection(collectionName).deleteOne(item);
-        return;
     }
 
     async update(query: Object, key: string, value: JSONValue, collectionName: DatabaseCollection) {
@@ -197,7 +195,7 @@ export class MongoDatabase extends MongoClient implements BaseDatabase {
         let retries = 3;
 
         // Wait if already connecting
-        if (this._starting == true)
+        if (this._starting)
         {
             await this._connectionPromise;
             return;
@@ -239,10 +237,10 @@ export class MongoDatabase extends MongoClient implements BaseDatabase {
     }
 }
 
-let _db : DiscordDatabase = null;
+let _globalDB : DiscordDatabase = null;
 
 export function getDB() : DiscordDatabase {
-    return _db;
+    return _globalDB;
 }
 
 /**
@@ -252,7 +250,7 @@ export class DiscordDatabase {
     _db: BaseDatabase;
 
     constructor(database: BaseDatabase) {
-        _db = this;
+        _globalDB = this;
         this._db = database;
     }
 
@@ -271,11 +269,11 @@ export class DiscordDatabase {
         let _db = this._db;
         return async function (...args) {
             try {
-                return await databaseFunction.call(_db, ...args);
+                return databaseFunction.call(_db, ...args);
             } catch (err) {
                 console.error(err);
                 await _db.reconnect();
-                return await databaseFunction.call(_db, ...args);
+                return databaseFunction.call(_db, ...args);
             }
         }
     }
@@ -430,8 +428,8 @@ export class DiscordDatabase {
         }
         let currentItem : DatabaseRole[] = await this._addReconnect(this._db.find)(items, DatabaseCollection.ROLES) as DatabaseRole[];
         if (currentItem.length !== 1) return;
-        let newItem = currentItem[0];
-        newItem.permissions.filter((perm: string) => perm !== permission);
-        await this._addReconnect(this._db.update)(items, DatabaseItemProperties.PERMISSIONS, newItem.permissions, DatabaseCollection.ROLES);
+        let newPermissions = currentItem[0].permissions
+            .filter((perm) => perm !== permission);
+        await this._addReconnect(this._db.update)(items, DatabaseItemProperties.PERMISSIONS, newPermissions, DatabaseCollection.ROLES);
     }
 }

@@ -15,7 +15,7 @@ async function checkPermission(permission, user) {
     if (user instanceof discord_js_1.GuildMember) {
         user = user.user;
     }
-    return await _checkUserPermission(user.id, permission, (0, database_1.getDB)());
+    return _checkUserPermission(user.id, permission, (0, database_1.getDB)());
 }
 exports.checkPermission = checkPermission;
 async function _checkRolePermission(roles, permission, database) {

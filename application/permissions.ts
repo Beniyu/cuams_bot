@@ -20,7 +20,7 @@ export async function checkPermission(permission: string, user : GuildMember | U
     if (user instanceof GuildMember) {
         user = user.user;
     }
-    return await _checkUserPermission(user.id, permission, getDB());
+    return _checkUserPermission(user.id, permission, getDB());
 }
 
 /**

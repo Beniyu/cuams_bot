@@ -5,4 +5,4 @@ ARG CACHEBUST=1
 COPY ["package.json", "package-lock.json*", "./"]
 RUN npm install --production
 COPY . .
-CMD [ "node", "server.js", "staging" ]
+CMD [ "node", "server.js", "development" ]

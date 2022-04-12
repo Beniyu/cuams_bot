@@ -47,7 +47,6 @@ class MongoDatabase extends mongodb_1.MongoClient {
             return;
         }
         await this._db.collection(collectionName).insertOne(item);
-        return;
     }
     async delete(item, collectionName) {
         if (Array.isArray(item)) {
@@ -57,7 +56,6 @@ class MongoDatabase extends mongodb_1.MongoClient {
             return;
         }
         await this._db.collection(collectionName).deleteOne(item);
-        return;
     }
     async update(query, key, value, collectionName) {
         let updateObject = {};
@@ -90,7 +88,7 @@ class MongoDatabase extends mongodb_1.MongoClient {
     }
     async startConnection() {
         let retries = 3;
-        if (this._starting == true) {
+        if (this._starting) {
             await this._connectionPromise;
             return;
         }
@@ -126,14 +124,14 @@ class MongoDatabase extends mongodb_1.MongoClient {
     }
 }
 exports.MongoDatabase = MongoDatabase;
-let _db = null;
+let _globalDB = null;
 function getDB() {
-    return _db;
+    return _globalDB;
 }
 exports.getDB = getDB;
 class DiscordDatabase {
     constructor(database) {
-        _db = this;
+        _globalDB = this;
         this._db = database;
     }
     connect() {
@@ -143,12 +141,12 @@ class DiscordDatabase {
         let _db = this._db;
         return async function (...args) {
             try {
-                return await databaseFunction.call(_db, ...args);
+                return databaseFunction.call(_db, ...args);
             }
             catch (err) {
                 console.error(err);
                 await _db.reconnect();
-                return await databaseFunction.call(_db, ...args);
+                return databaseFunction.call(_db, ...args);
             }
         };
     }
@@ -240,9 +238,9 @@ class DiscordDatabase {
         let currentItem = await this._addReconnect(this._db.find)(items, DatabaseCollection.ROLES);
         if (currentItem.length !== 1)
             return;
-        let newItem = currentItem[0];
-        newItem.permissions.filter((perm) => perm !== permission);
-        await this._addReconnect(this._db.update)(items, DatabaseItemProperties.PERMISSIONS, newItem.permissions, DatabaseCollection.ROLES);
+        let newPermissions = currentItem[0].permissions
+            .filter((perm) => perm !== permission);
+        await this._addReconnect(this._db.update)(items, DatabaseItemProperties.PERMISSIONS, newPermissions, DatabaseCollection.ROLES);
     }
 }
 exports.DiscordDatabase = DiscordDatabase;
