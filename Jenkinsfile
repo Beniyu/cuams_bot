@@ -9,6 +9,13 @@ pipeline {
 				}
 			}
 		}
+
+		stage('Run Jest Tests') {
+		    steps {
+		        sh "npm install --development"
+		        sh "npm test"
+		    }
+		}
 		
 		stage('SonarQube Analysis') {
 			steps {
