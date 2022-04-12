@@ -55,9 +55,9 @@ const rest = new REST({ version: '9' }).setToken(botSecretKey);
 
 // Import only js files as commands and events
 let commandFiles : string[] = readdirSync("./commands")
-    .filter(fileName => fileName.endsWith(".js"));
+    .filter(fileName => fileName.endsWith(".ts"));
 let eventFiles : string[] = readdirSync("./events")
-    .filter(fileName => fileName.endsWith(".js"));
+    .filter(fileName => fileName.endsWith(".ts"));
 
 // Make command list so that it can be sent to Discord using API
 let commands = [];
