@@ -12,10 +12,10 @@ pipeline {
 
 		stage('Run Jest Tests') {
 		    steps {
-		        sh "cd ./application"
-		        sh "npm install --development"
-		        sh "npm test"
-		        sh "cd .."
+		        dir("application") {
+		            sh "npm install --development"
+                	sh "npm test"
+		        }
 		    }
 		}
 		
