@@ -87,21 +87,42 @@ async function handleCommands(interaction: CommandInteraction) {
     }
 }
 
+/**
+ * Enable command in channel in database with response
+ * @param interaction User interaction
+ * @param channel Channel
+ * @param command Command name
+ */
 async function addCommandToChannel(interaction: CommandInteraction, channel: ChannelItem, command: string) {
     await getDB().addToSet(channel, DatabaseItemProperties.ALLOWEDCOMMANDS, command);
     await privateResponse(interaction, "Command added to channel.");
 }
 
+/**
+ * Disable command in channel in database with response
+ * @param interaction User interaction
+ * @param channel Channel
+ * @param command Command name
+ */
 async function removeCommandFromChannel(interaction: CommandInteraction, channel: ChannelItem, command: string) {
     await getDB().deleteFromArray(channel, DatabaseItemProperties.ALLOWEDCOMMANDS, command);
     await privateResponse(interaction, "Command removed from channel.");
 }
 
+/**
+ * Send commands available in channel to user in interaction
+ * @param interaction User interaction
+ * @param channel Channel
+ */
 async function getChannelCommands(interaction: CommandInteraction, channel: ChannelItem) {
+    // Retrieve channel data
     const retrievedChannel = await getDB().getItem(channel);
+
+    // Skip if no channel found
     if (retrievedChannel.length === 0) {
         await privateResponse(interaction, "Channel not found.");
         return;
     }
+
     await privateResponse(interaction, "Commands: " + retrievedChannel[0].allowedCommands.join(', '));
 }

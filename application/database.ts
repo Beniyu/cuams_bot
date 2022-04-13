@@ -11,6 +11,7 @@ import {
     RoleItem,
     UserItem
 } from "./guildItems";
+import {JSONValue} from "./types";
 
 /**
  * All database collections
@@ -30,22 +31,6 @@ export enum DatabaseItemProperties {
     BUTTONS = "buttons",
     ALLOWEDCOMMANDS = "allowedCommands",
 }
-
-/**
- * JSON-compatible value (i.e. suitable for MongoDB)
- */
-export type JSONValue =
-    | string
-    | number
-    | boolean
-    | JSONObject
-    | JSONArray;
-
-export interface JSONObject {
-    [x: string]: JSONValue;
-}
-
-export interface JSONArray extends Array<JSONValue> { }
 
 export interface BaseDatabase {
     /**
@@ -73,6 +58,13 @@ export interface BaseDatabase {
      * @param value New value
      */
     update(query: GuildItem, key: string, value: JSONValue) : Promise<void>;
+
+    /**
+     * Unset property in item
+     * @param query Query object
+     * @param key Key of property
+     */
+    unset?(query: GuildItem, key: string) : Promise<void>;
 
     /**
      * Push value to array in database
@@ -128,7 +120,7 @@ export class MongoDatabase extends MongoClient implements BaseDatabase {
         // insertMany for arrays, insertOne for single item
         if (Array.isArray(item)) {
             for (let collection of Object.values(DatabaseCollection)) {
-                let itemsInCollection = item.filter(item => item.collection === collection).map(item => item.json);
+                let itemsInCollection = item.filter(element => element.collection === collection).map(element => element.json);
                 if (itemsInCollection.length === 0) continue;
                 await this._db.collection(collection).insertMany(itemsInCollection);
             }
@@ -141,7 +133,7 @@ export class MongoDatabase extends MongoClient implements BaseDatabase {
         // deleteMany for arrays, deleteOne for single item
         if (Array.isArray(item)) {
             for (let collection in DatabaseCollection) {
-                let itemsInCollection = item.filter(item => item.collection === collection).map(item => item.json);
+                let itemsInCollection = item.filter(element => element.collection === collection).map(element => element.json);
                 if (itemsInCollection.length === 0) continue;
                 await this._db.collection(collection).deleteMany(itemsInCollection);
             }
@@ -155,6 +147,13 @@ export class MongoDatabase extends MongoClient implements BaseDatabase {
         let updateObject = {};
         updateObject[key] = value;
         await this._db.collection(query.collection).updateMany(query.json, { "$set" : updateObject });
+    }
+
+    async unset(query: GuildItem, key: string) {
+        // Remove property using updateMany
+        let updateObject = {};
+        updateObject[key] = "";
+        await this._db.collection(query.collection).updateMany(query.json, {"$unset" : updateObject });
     }
 
     async pushToArray(query: GuildItem, property: string, values: JSONValue[] | JSONValue) : Promise<void> {
@@ -290,7 +289,7 @@ export class DiscordDatabase {
     /**
      * Get users and roles from database
      */
-    async getGuildData(): Promise<{ users: UserItem[], roles: RoleItem[], channels: GuildItem[] }> {
+    async getGuildData(): Promise<{ users: UserItem[], roles: RoleItem[], channels: ChannelItem[] }> {
         // Gets users and roles
         let userPromise = this._db.find(new UserItem());
         let rolePromise = this._db.find(new RoleItem());
@@ -330,6 +329,58 @@ export class DiscordDatabase {
     }
 
     /**
+     * Set property in item in database
+     * @param item Query object
+     * @param key Property
+     * @param value New value
+     */
+    async setItemProperty(item: GuildItem, key: string, value: JSONValue) {
+        await this._addReconnect(this._db.update)(item, key, value);
+    }
+
+    /**
+     * Unset property in item in database
+     * @param item Query object
+     * @param key Property
+     */
+    async unsetItemProperty<T extends GuildItem>(item: T, key: string) : Promise<void> {
+        // Use unset if defined
+        if (this._db.unset) {
+            return this._addReconnect(this._db.unset)(item, key);
+        }
+        // Find object manually and delete the property using javascript properties if not defined
+        // Find item
+        let currentItem : T[] = await this._addReconnect(this._db.find)(item);
+
+        // Ignore if not found
+        if (currentItem.length === 0) return;
+
+        // Split using dots to recursively go deeper into object
+        let subKeys = key.split('.');
+
+        // Remove the last key so delete can be used with it
+        let lastKey = subKeys.pop();
+
+        // Dot representation of prefinal item
+        let penultimateKey = subKeys.join('.');
+
+        // Copy item into throwaway variable
+        let penultimateElement = {};
+        Object.assign(penultimateElement, currentItem[0])
+
+        // Get one-way from the property to be unset
+        for (let subKey of subKeys) {
+            penultimateElement = penultimateElement[subKey];
+        }
+
+        // Delete it
+        delete penultimateElement[lastKey];
+
+        // Update database with new property
+        await this._addReconnect(this._db.update)(item, penultimateKey, penultimateElement);
+    }
+
+    /**
      * Add permission to item in database
      * @param query Item
      * @param permission Permission to add
@@ -354,9 +405,11 @@ export class DiscordDatabase {
      * @param item Item to add to set
      */
     async addToSet<T extends GuildItem>(query: T, field: DatabaseItemProperties, item: JSONValue) : Promise<void> {
+        // Use pushToSet if defined
         if (this._db.pushToSet) {
             return this._addReconnect(this._db.pushToSet)(query, field, item);
         }
+        // Manually add by fetching and updating if not
         let currentItem : T[] = await this._addReconnect(this._db.find)(query);
         if (currentItem.length !== 1) return;
         let newSet : JSONValue[] = currentItem[0][field];
@@ -371,13 +424,15 @@ export class DiscordDatabase {
      * @param item Item to remove from array/set
      */
     async deleteFromArray<T extends GuildItem>(query: T, field: DatabaseItemProperties, item: JSONValue) : Promise<void> {
+        // Use removeFromArray if defined
         if (this._db.removeFromArray) {
             return this._addReconnect(this._db.removeFromArray)(query, field, item);
         }
+        // Manually remove by fetching and updating if not
         let currentItem : T[] = await this._addReconnect(this._db.find)(query);
         if (currentItem.length !== 1) return;
         let newArray : JSONValue[] = currentItem[0][field]
-            .filter((currentItem) => currentItem !== item);
+            .filter((element) => element !== item);
         await this._addReconnect(this._db.update)(query, field, newArray);
     }
 }

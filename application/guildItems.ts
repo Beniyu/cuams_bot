@@ -3,6 +3,7 @@
  */
 
 import {DatabaseCollection} from "./database";
+import {Button} from "./buttons";
 
 export interface ItemStore {
     [x: string]: string;
@@ -24,7 +25,7 @@ export interface BasicRoleItem extends BasicGuildItem {
 
 export interface BasicChannelItem extends BasicGuildItem {
     _id: string;
-    buttons: ItemStore;
+    buttons: { [x: string] : Button };
     allowedCommands: string[]
 }
 
@@ -93,7 +94,7 @@ export class UserItem extends PermissionedGuildItem implements BasicUserItem {
     }
 
     import(obj: BasicUserItem) : UserItem {
-        return new UserItem(obj._id as string, obj.permissions as string[]);
+        return new UserItem(obj._id, obj.permissions);
     }
 }
 
@@ -107,7 +108,7 @@ export class RoleItem extends PermissionedGuildItem implements BasicRoleItem {
     }
 
     import(obj: BasicRoleItem) : RoleItem {
-        return new RoleItem(obj._id as string, obj.permissions as string[]);
+        return new RoleItem(obj._id, obj.permissions);
     }
 }
 
@@ -115,11 +116,11 @@ export class RoleItem extends PermissionedGuildItem implements BasicRoleItem {
  * Template for discord channel in database
  */
 export class ChannelItem extends GuildItem implements BasicChannelItem {
-    buttons: ItemStore;
+    buttons: { [x: string] : Button };
     allowedCommands: string[];
     _collection = DatabaseCollection.CHANNELS;
 
-    constructor(id?: string, buttons?: ItemStore, allowedCommands?: string[]) {
+    constructor(id?: string, buttons?: { [x: string] : Button }, allowedCommands?: string[]) {
         super(id);
         this.buttons = buttons;
         this.allowedCommands = allowedCommands;
@@ -130,6 +131,6 @@ export class ChannelItem extends GuildItem implements BasicChannelItem {
     }
 
     import(obj: BasicChannelItem) : ChannelItem {
-        return new ChannelItem(obj._id as string, obj.buttons as ItemStore, obj.allowedCommands as string[]);
+        return new ChannelItem(obj._id, obj.buttons, obj.allowedCommands);
     }
 }

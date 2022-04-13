@@ -2,9 +2,10 @@
  * @file File containing functions related to permission checking
  */
 
-import {GuildChannel, GuildMember, User} from "discord.js";
+import {GuildChannel, GuildMember, GuildMemberRoleManager, User} from "discord.js";
 import {DiscordDatabase, getDB} from "./database";
 import {ChannelItem, RoleItem, UserItem} from "./guildItems";
+import {APIGuildMember} from "discord-api-types/v9";
 
 /**
  * Check whether a command is enabled in a channel
@@ -28,22 +29,29 @@ export async function checkChannelPermission(commandName: string, channel: Guild
  * @param permission Permission string
  * @param user User as GuildMember (hence can use role check) or User
  */
-export async function checkPermission(permission: string, user : GuildMember | User) : Promise<boolean> {
+export async function checkPermission(permission: string, user : GuildMember | User | APIGuildMember) : Promise<boolean> {
     let allValidPermissions = getAllPermissions(permission);
 
-    if (user instanceof GuildMember) {
+    if (!(user instanceof User)) {
         // Iterate over all of user's roles
-        const roles: IterableIterator<string> = user.roles.cache.keys();
+        const roleManager : string[] | GuildMemberRoleManager = user.roles;
+        let roles : string[] | IterableIterator<string>;
+        if (Array.isArray(roleManager)) roles = roleManager
+        else roles = roleManager.cache.keys();
         if (await _checkRolePermission(roles, allValidPermissions, getDB())) {
             return true;
         }
     }
+
     // Get user object
-    if (user instanceof GuildMember) {
-        user = user.user;
+    let id;
+    if (!(user instanceof User)) {
+        id = user.user.id;
+    } else {
+        id = user.id;
     }
     // Check user's specific permissions if permissions not found in role
-    return _checkUserPermission(user.id, allValidPermissions, getDB());
+    return _checkUserPermission(id, allValidPermissions, getDB());
 }
 
 /**

@@ -59,7 +59,9 @@ const { botSecretKey, applicationID, guildID, databaseName, databaseUri }: { bot
 
 // Create new Discord bot client
 const client : DiscordClient = new DiscordClient({ intents:
-        [Discord.Intents.FLAGS.GUILDS, Discord.Intents.FLAGS.GUILD_MEMBERS]
+        [Discord.Intents.FLAGS.GUILDS,
+        Discord.Intents.FLAGS.GUILD_MEMBERS,
+        Discord.Intents.FLAGS.GUILD_MESSAGES]
 });
 
 // Load database
@@ -75,6 +77,8 @@ let commandFiles : string[] = readdirSync("./commands")
     .filter(fileName => fileName.endsWith(".ts"));
 let eventFiles : string[] = readdirSync("./events")
     .filter(fileName => fileName.endsWith(".ts"));
+let actionFiles : string[] = readdirSync("./actions")
+    .filter(fileName => fileName.endsWith(".ts"));
 
 // Make command list so that it can be sent to Discord using API
 let commands = [];
@@ -85,6 +89,8 @@ commandFiles.forEach(commandFile => {
     commands.push(command.data.toJSON());
     client.addCommand(command);
 });
+
+actionFiles.forEach(actionFile => client.addAction(require(`./actions/${actionFile}`)));
 
 // Event handling file shape
 export type DiscordEvent = {

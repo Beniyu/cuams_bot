@@ -1,6 +1,6 @@
 /**
- * @file Event handler for user addition
- * Adds user to database
+ * @file Event handler for channel addition
+ * Adds channel to database
  */
 import {GuildChannel} from "discord.js";
 import {getDB} from "../database";

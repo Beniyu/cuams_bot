@@ -1,6 +1,6 @@
 /**
- * @file Event handler for user deletion
- * Removes user from database
+ * @file Event handler for channel deletion
+ * Removes channel from database
  */
 import {DMChannel, GuildChannel} from "discord.js";
 import {getDB} from "../database";

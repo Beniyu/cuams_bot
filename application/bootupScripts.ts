@@ -3,13 +3,13 @@
  */
 import {DiscordClient} from "./discordClient";
 import {DiscordDatabase} from "./database";
-import {Guild} from "discord.js";
+import {Guild, GuildChannel, TextChannel} from "discord.js";
 import {ChannelItem, GuildItem, RoleItem, UserItem} from "./guildItems";
 
 type Data = {
     users: UserItem[],
     roles: RoleItem[],
-    channels: GuildItem[]
+    channels: ChannelItem[]
 }
 
 /**
@@ -43,6 +43,39 @@ export async function synchronize(client : DiscordClient, guildID : string, data
 
     // Resolve promise only when changes have been submitted
     await Promise.all(databaseFinalPromises);
+
+    // Fetch guild
+    let guild : Guild = await client.guilds.fetch(guildID);
+
+    // Fetch new database channels
+    let databaseChannels : ChannelItem[] = await database.getItem(new ChannelItem());
+
+    // Get promise for each channel
+    let channelPromises = [];
+    for (let databaseChannel of databaseChannels) {
+        // Fetch each channel
+        let channelPromise = guild.channels.fetch(databaseChannel._id)
+            .then(async (discordChannel : GuildChannel) => {
+                // Only process text channels
+                if (!(discordChannel instanceof TextChannel)) return;
+
+                // Collect promises for each button checked
+                let messagePromises = [];
+                for (let buttonMessage of Object.keys(databaseChannel.buttons)) {
+                    // Check if button message retrievable
+                    let promise = discordChannel.messages.fetch(buttonMessage)
+                        // If failure while retrieving message, delete the entry
+                        .catch(() => database.unsetItemProperty(new ChannelItem(databaseChannel._id), "buttons." + buttonMessage));
+                    messagePromises.push(promise);
+                }
+                // Return combination of all message promises
+                return Promise.all(messagePromises);
+            })
+        channelPromises.push(channelPromise);
+    }
+
+    // Only finish when every button processed
+    await Promise.all(channelPromises);
 }
 
 /**

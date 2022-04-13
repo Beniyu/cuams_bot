@@ -2,6 +2,7 @@
  * @file Event handler for all interactions
  * Command interactions are handled using command handlers in /commands folder
  */
+
 import {DiscordCommand} from "../discordClient";
 import {GuildChannel, GuildMember} from "discord.js";
 import {checkChannelPermission, checkPermission} from "../permissions";
@@ -11,7 +12,7 @@ module.exports = {
     name: 'interactionCreate',
     once: false,
     execute: async interaction => {
-        // Only allow commands
+        // Only handle command interactions
         if (!interaction.isCommand()) return;
 
         // Get command from commands
