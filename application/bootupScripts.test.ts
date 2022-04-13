@@ -4,9 +4,10 @@
 import {synchronize} from "./bootupScripts";
 import * as Discord from "discord.js";
 import {stringify} from "ts-jest";
-import {BaseDatabase, DatabaseCollection, DiscordDatabase, JSONValue} from "./database";
+import {BaseDatabase, DatabaseCollection, DiscordDatabase} from "./database";
 import {DiscordClient} from "./discordClient";
 import {ChannelItem, GuildItem, RoleItem, UserItem} from "./guildItems";
+import {JSONValue} from "./types";
 
 // Create dummy database object containing all necessary methods
 export class DummyDatabase implements BaseDatabase {
