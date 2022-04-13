@@ -13,6 +13,7 @@ prompt.get(['username', 'password'], function(err, result) {
 		var db2 = db.db("cuams_bot_staging");
 		db1.createCollection("users");
 		db1.createCollection("roles");
+		db1.createCollection("channels");
 		db1.addUser("botuser", "passwordHere",
 			{roles: [
 				{ role: "dbAdmin", db: "cuams_bot_prod" },
@@ -27,6 +28,7 @@ prompt.get(['username', 'password'], function(err, result) {
 		);
 		db2.createCollection("users");
 		db2.createCollection("roles");
+		db2.createCollection("channels");
 		db2.addUser("botuser", "passwordHere",
 			{roles: [
 				{ role: "dbAdmin", db: "cuams_bot_staging" },

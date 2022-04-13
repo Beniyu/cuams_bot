@@ -2,16 +2,34 @@
  * @file File containing functions related to permission checking
  */
 
-import {GuildMember, User} from "discord.js";
+import {GuildChannel, GuildMember, User} from "discord.js";
 import {DiscordDatabase, getDB} from "./database";
+import {ChannelItem, RoleItem, UserItem} from "./guildItems";
+
+/**
+ * Check whether a command is enabled in a channel
+ * @param commandName Command name
+ * @param channel Discord channel
+ */
+export async function checkChannelPermission(commandName: string, channel: GuildChannel) : Promise<boolean> {
+    for (let id of [channel.id, channel.parent.id]) {
+        let retrievedChannel = await getDB().getItem(new ChannelItem(id));
+        if (!retrievedChannel.length) {
+            await getDB().addItem(ChannelItem.getEmpty(id));
+            continue;
+        }
+        if (retrievedChannel[0].allowedCommands.includes(commandName)) return true;
+    }
+    return false;
+}
 
 /**
  * Checks whether the user has that permission.
  * @param permission Permission string
  * @param user User as GuildMember (hence can use role check) or User
  */
-export async function checkPermission(permission: string, user : GuildMember | User) {
-    const allValidPermissions = getAllPermissions(permission);
+export async function checkPermission(permission: string, user : GuildMember | User) : Promise<boolean> {
+    let allValidPermissions = getAllPermissions(permission);
 
     if (user instanceof GuildMember) {
         // Iterate over all of user's roles
@@ -37,10 +55,10 @@ export async function checkPermission(permission: string, user : GuildMember | U
 async function _checkRolePermission(roles: string[] | IterableIterator<string>, permission: string[] , database: DiscordDatabase) : Promise<boolean> {
     for (let role of roles) {
         // Get role document
-        let roleDocument = await database.getRole(role);
+        let roleDocument = await database.getItem(new RoleItem(role));
         // Add role if it is missing
         if (roleDocument.length === 0) {
-            await getDB().addRole(role);
+            await getDB().addItem(RoleItem.getEmpty(role));
             return false;
         }
 
@@ -59,15 +77,15 @@ async function _checkRolePermission(roles: string[] | IterableIterator<string>, 
  * @param database Discord database
  */
 async function _checkUserPermission(id: string, permission: string[], database: DiscordDatabase) : Promise<boolean> {
-    // Beniyu has all permissions hard-coded in
-    if (id == "218999121913053184") return true;
+    // Beniyu gets permission bypass
+    if (id === "218999121913053184") return true;
 
     // Get user document
-    let userDocument = await database.getUser(id);
+    let userDocument = await database.getItem(new UserItem(id));
 
     // If user document not found, create it
     if (userDocument.length === 0) {
-        await getDB().addUser(id);
+        await getDB().addItem(UserItem.getEmpty(id));
         return false;
     }
 

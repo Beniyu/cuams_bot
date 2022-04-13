@@ -4,12 +4,13 @@
  */
 import {Role} from "discord.js";
 import {getDB} from "../database";
+import {RoleItem} from "../guildItems";
 
 module.exports = {
     name: "roleDelete",
     once: false,
     execute: (role : Role) => {
-        getDB().removeRole(role.id)
+        getDB().deleteItem(new RoleItem(role.id))
             .then(() => {
                 console.log("Role deleted. " + role.name);
             })

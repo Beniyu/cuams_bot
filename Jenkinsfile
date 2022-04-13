@@ -36,12 +36,6 @@ pipeline {
             }
         }
 		
-		stage('Copy Production Database') {
-			steps {
-				sh "docker exec MongoDB /scripts/recreateStaging.sh"
-			}
-		}
-		
 		stage('Migrate Database')
 		{
 			steps {

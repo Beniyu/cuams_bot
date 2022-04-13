@@ -3,8 +3,9 @@
  * Command interactions are handled using command handlers in /commands folder
  */
 import {DiscordCommand} from "../discordClient";
-import {GuildMember} from "discord.js";
-import {checkPermission} from "../permissions";
+import {GuildChannel, GuildMember} from "discord.js";
+import {checkChannelPermission, checkPermission} from "../permissions";
+import {privateResponse} from "../server";
 
 module.exports = {
     name: 'interactionCreate',
@@ -19,28 +20,36 @@ module.exports = {
         // Check command is valid
         if (!command) return;
 
-        // Check if user has the permissions to run the command
-        if (interaction.member instanceof GuildMember && await checkPermission("command.use." + command.data.name, interaction.member)) {
-            // Try to execute the command
-            try {
-                await command.execute(interaction);
-            } catch (error) {
-                // Reply with error if failure during execution
-                console.error(error);
-                try {
-                    await interaction.reply({
-                        content: "500: An error occurred while executing this command.",
-                        ephemeral: true
-                    });
-                } catch {
-                    console.error("Failure response timed out.");
-                }
-            }
-        } else {
-            await interaction.reply({
-                content: "401: You do not have the permissions to execute this command.",
-                ephemeral: true
+        // Only respond if interaction comes from a guild (no dms)
+        if (!(interaction.member instanceof GuildMember && interaction.channel instanceof GuildChannel)) return;
+
+        let channelEnabledPromise : Promise<boolean> = checkChannelPermission(command.data.name, interaction.channel)
+            .then((isEnabled) => {
+                if (!isEnabled) return checkPermission("command.bypass." + command.data.name, interaction.member);
+                return Promise.resolve(true);
             });
+        let permissionPromise : Promise<boolean> = checkPermission("command.use." + command.data.name, interaction.member);
+
+        let [channelStatus, permissionStatus] = await Promise.all([channelEnabledPromise, permissionPromise]);
+
+        // Command must be enabled in channel or user has bypass
+        if (!channelStatus) {
+            await privateResponse(interaction, "401: This command is not enabled in this channel.");
+            return;
+        }
+
+        // User must have permission
+        if (!permissionStatus) {
+            await privateResponse(interaction, "401: You do not have the permissions to execute this command.");
+            return;
+        }
+
+        // Attempt to execute command
+        try {
+            await command.execute(interaction);
+        } catch (error) {
+            console.error(error);
+            await privateResponse(interaction, "500: An error occurred while executing this command.");
         }
     }
 };

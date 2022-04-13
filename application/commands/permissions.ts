@@ -6,7 +6,8 @@
  */
 import {CommandInteraction, GuildMember, User} from "discord.js";
 import {SlashCommandBuilder} from "@discordjs/builders";
-import {getDB} from "../database";
+import {DatabaseCollection, getDB} from "../database";
+import {PermissionedGuildItem, RoleItem, UserItem} from "../guildItems";
 
 // Permissions can either be applied to user or role
 enum Mentionable {
@@ -27,19 +28,19 @@ module.exports = {
             subcommand
                 .setName('add')
                 .setDescription('Give user/role a permission.')
-                .addMentionableOption(option => option.setName('target').setDescription('The user/role'))
-                .addStringOption(option => option.setName('permission').setDescription('The permission string')))
+                .addMentionableOption(option => option.setName('target').setDescription('The user/role').setRequired(true))
+                .addStringOption(option => option.setName('permission').setDescription('The permission string').setRequired(true)))
         .addSubcommand(subcommand =>
             subcommand
                 .setName('delete')
                 .setDescription('Remove a permission from a user/role.')
-                .addMentionableOption(option => option.setName('target').setDescription('The user/role'))
-                .addStringOption(option => option.setName('permission').setDescription('The permission string')))
+                .addMentionableOption(option => option.setName('target').setDescription('The user/role').setRequired(true))
+                .addStringOption(option => option.setName('permission').setDescription('The permission string').setRequired(true)))
         .addSubcommand(subcommand =>
             subcommand
                 .setName('get')
                 .setDescription('Get all specific permissions of user/role')
-                .addMentionableOption(option => option.setName('target').setDescription('The user/role'))),
+                .addMentionableOption(option => option.setName('target').setDescription('The user/role').setRequired(true))),
 
     async execute(interaction: CommandInteraction) {
         // Get subcommand and all fields
@@ -68,15 +69,25 @@ module.exports = {
         // Check whether role or user specified
         let type = mentionable instanceof User || mentionable instanceof GuildMember ? Mentionable.USER : Mentionable.ROLE;
 
+        let item : PermissionedGuildItem;
+        switch (type) {
+            case Mentionable.USER:
+                item = new UserItem(mentionable.id);
+                break;
+            case Mentionable.ROLE:
+                item = new RoleItem(mentionable.id);
+                break;
+        }
+
         switch (subcommand) {
             case 'add':
-                await addPermission(interaction, mentionable.id, permission, type);
+                await addPermission(interaction, item, permission);
                 break;
             case 'delete':
-                await deletePermission(interaction, mentionable.id, permission, type);
+                await deletePermission(interaction, item, permission);
                 break;
             case 'get':
-                await getPermissions(interaction, mentionable.id, type);
+                await getPermissions(interaction, item);
                 break;
         }
     }
@@ -85,19 +96,11 @@ module.exports = {
 /**
  * Add permission to user/role with response
  * @param interaction Command interaction
- * @param id User/role ID
+ * @param item User/role
  * @param permission Permission string
- * @param type User or role
  */
-async function addPermission(interaction: CommandInteraction, id: string, permission: string, type: Mentionable) : Promise<void> {
-    switch (type) {
-        case Mentionable.USER:
-            await getDB().addUserPermission(id, permission);
-            break;
-        case Mentionable.ROLE:
-            await getDB().addRolePermission(id, permission);
-            break;
-    }
+async function addPermission(interaction: CommandInteraction, item: PermissionedGuildItem, permission: string) : Promise<void> {
+    await getDB().addPermission(item, permission);
     await interaction.reply({content:"Permission added.", ephemeral: true});
 }
 
@@ -105,50 +108,35 @@ async function addPermission(interaction: CommandInteraction, id: string, permis
 /**
  * Remove permission from user/role with response
  * @param interaction Command interaction
- * @param id User/role ID
+ * @param item User/role
  * @param permission Permission string
- * @param type User or role
  */
-async function deletePermission(interaction: CommandInteraction, id: string, permission: string, type: Mentionable) : Promise<void> {
-    switch (type) {
-        case Mentionable.USER:
-            await getDB().deleteUserPermission(id, permission)
-            break;
-        case Mentionable.ROLE:
-            await getDB().deleteRolePermission(id, permission);
-            break;
-    }
+async function deletePermission(interaction: CommandInteraction, item: PermissionedGuildItem, permission: string) : Promise<void> {
+    await getDB().deletePermission(item, permission);
     await interaction.reply({content:"Permission removed.", ephemeral: true});
 }
 
 /**
  * Get permissions from user/role
  * @param interaction Command interaction
- * @param id User/role id
- * @param type User or role
+ * @param item User/role
  */
-async function getPermissions(interaction : CommandInteraction, id: string, type: Mentionable) : Promise<void> {
+async function getPermissions(interaction : CommandInteraction, item: PermissionedGuildItem) : Promise<void> {
     // Get user/role document
-    let document;
-    switch (type) {
-        case Mentionable.USER:
-            document = await getDB().getUser(id);
-            break;
-        case Mentionable.ROLE:
-            document = await getDB().getRole(id);
-            break;
-    }
+    let document = await getDB().getItem(item);
+
     // Check if user/role found
     if (document.length === 0) {
-        switch (type) {
-            case Mentionable.USER:
+        switch (item.collection) {
+            case DatabaseCollection.USERS:
                 await interaction.reply({content: "User not found.", ephemeral: true})
                 return;
-            case Mentionable.ROLE:
+            case DatabaseCollection.ROLES:
                 await interaction.reply({content: "Role not found.", ephemeral: true});
                 return;
         }
     }
+
     // Respond with permissions if found
     await interaction.reply({content:"Permissions: " + document[0].permissions.join(', '), ephemeral: true});
 }

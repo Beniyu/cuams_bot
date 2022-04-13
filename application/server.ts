@@ -4,7 +4,24 @@ import { Routes } from 'discord-api-types/v9';
 import { readdirSync } from "fs";
 import { DiscordClient, DiscordCommand } from  "./discordClient";
 import {MongoDatabase, DiscordDatabase, BaseDatabase} from "./database";
-import {synchronizeUsersAndRoles} from "./bootupScripts";
+import {synchronize} from "./bootupScripts";
+import {CommandInteraction} from "discord.js";
+
+/**
+ * Wraps discord reply response around try catch wrapper for timeout protection with ephemeral enabled
+ * @param interaction CommandInteraction
+ * @param response Response to user
+ */
+export async function privateResponse(interaction: CommandInteraction, response: string) {
+    try {
+        await interaction.reply({
+            content: response,
+            ephemeral: true
+        });
+    } catch {
+        console.error("Response timed out.");
+    }
+}
 
 // The bot should be run using the command "node server.js (environment)"
 if (process.argv.length != 3)
@@ -105,7 +122,7 @@ dbPromise
 })
 .then(() => {
     // Synchronise discord and database
-    return synchronizeUsersAndRoles(client, guildID, database);
+    return synchronize(client, guildID, database);
 })
 .then(() => {
     // Finished initialising

@@ -11,7 +11,7 @@ export type DiscordCommand = {
 }
 
 export class DiscordClient extends Client {
-    _commands: Collection<any, any>
+    _commands: Collection<any, any>;
 
     constructor(options : ClientOptions) {
         super(options);

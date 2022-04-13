@@ -4,12 +4,13 @@
  */
 import {GuildMember} from "discord.js";
 import {getDB} from "../database";
+import {UserItem} from "../guildItems";
 
 module.exports = {
     name: "guildMemberAdd",
     once: false,
     execute: (member : GuildMember) => {
-        getDB().addUser(member.user.id)
+        getDB().addItem(UserItem.getEmpty(member.id))
             .then(() => {
                 console.log("User added. " + member.displayName);
             })
