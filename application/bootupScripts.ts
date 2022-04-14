@@ -3,7 +3,7 @@
  */
 import {DiscordClient} from "./discordClient";
 import {DiscordDatabase} from "./database";
-import {Guild, GuildChannel, TextChannel} from "discord.js";
+import {Guild, GuildChannel, NewsChannel, TextChannel} from "discord.js";
 import {ChannelItem, GuildItem, RoleItem, UserItem} from "./guildItems";
 
 type Data = {
@@ -57,7 +57,7 @@ export async function synchronize(client : DiscordClient, guildID : string, data
         let channelPromise = guild.channels.fetch(databaseChannel._id)
             .then(async (discordChannel : GuildChannel) => {
                 // Only process text channels
-                if (!(discordChannel instanceof TextChannel)) return;
+                if (!(discordChannel instanceof TextChannel || discordChannel instanceof NewsChannel)) return;
 
                 // Collect promises for each button checked
                 let messagePromises = [];
