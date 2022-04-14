@@ -1,5 +1,14 @@
 version: "3"
+networks:
+    cuams_bot:
+        external: true
 services:
     cuams_bot_node:
         container_name: cuams_bot_node
         build: ./application
+        networks:
+            cuams_bot:
+                aliases:
+                    - node
+        volumes:
+            - /var/jenkins_home/bot_credentials:/credentials
