@@ -21,42 +21,9 @@ module.exports = {
     async execute(interaction: CommandInteraction) {
         // Retrieve messages from channel
         let channel : TextBasedChannel = interaction.channel;
-        let messages : Collection<string, Message> = await channel.messages.fetch({limit: 10});
 
-        // Make image variable
-        let image;
-
-        // Check last 10 messages from channel looking at newest first
-        for (let message of messages.values()) {
-            // Check attachments first
-            // If attachment includes a valid image, use it
-            for (let attachment of message.attachments.values()) {
-                if (allowedContentType.includes(attachment.contentType)) {
-                    image = attachment.url;
-                    break;
-                }
-            }
-
-            // Break out if image found
-            if (image) break;
-
-            // Check embeds after attachments
-            for (let embed of message.embeds) {
-                // Only consider image embeds
-                if (embed.type !== "image") continue;
-
-                // Remove query params
-                let url = embed.url.split('?')[0];
-
-                // Only allow embeds with valid file extensions
-                if (!allowedExtensions.includes(url.split('.').pop())) continue;
-
-                // Break out if image found
-                image = url;
-                break;
-            }
-            if (image) break;
-        }
+        // Find image in channel
+        let image = await findImage(channel)
 
         // Private response if image found
         if (!image) return privateResponse(interaction, "Cannot find image in chat.")
@@ -74,9 +41,40 @@ module.exports = {
         let anilistData = await getAnilistData(result.result[0].anilist);
         if (!anilistData) return interaction.editReply("Error occured while retrieving data from anilist");
 
+        // Construct message response
+        let message = "Romaji: " + anilistData.title.romaji + "\n";
+
+        // Ignore English title if missing
+        if (anilistData.title.english) { message += "English: " + anilistData.title.english}
+
         // Respond with data
-        await interaction.editReply(`
-English: ${anilistData.title.english}
-Romaji: ${anilistData.title.romaji}`);
+        await interaction.editReply(message);
     }
 };
+
+/**
+ * Find image in channel from last 10 messages
+ * @param channel Discord channel
+ */
+async function findImage(channel: TextBasedChannel) : Promise<string> {
+    let messages : Collection<string, Message> = await channel.messages.fetch({limit: 10});
+    for (let message of messages.values()) {
+        // Check attachments first
+        // If attachment includes a valid image, use it
+        for (let attachment of message.attachments.values()) {
+            if (allowedContentType.includes(attachment.contentType)) {
+                return attachment.url;
+            }
+        }
+
+        // Check embeds after attachments
+        for (let embed of message.embeds) {
+            // Remove query params
+            let url = embed.url.split('?')[0];
+
+            // Only allow embeds with valid file extensions
+            if (allowedExtensions.includes(url.split('.').pop())) return url;
+        }
+    }
+    return null;
+}
