@@ -63,12 +63,7 @@ module.exports = {
 
         // Get suggester's name in mention form if they choose to not be anonymous.
         if (!anonymous) {
-            let suggesterName: string;
-            if ("nickname" in interaction.member) {
-                suggesterName = interaction.member.nickname;
-            } else {
-                suggesterName = interaction.member.nick;
-            }
+            let suggesterName: string = interaction.user.username + "#" + interaction.user.discriminator;
             suggestionEmbed.footer.text = `Suggested by ${suggesterName}`;
             suggestionEmbed.color = "RED";
         }
