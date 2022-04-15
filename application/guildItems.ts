@@ -4,6 +4,7 @@
 
 import {DatabaseCollection} from "./database";
 import {Button} from "./buttons";
+import {JSONValue} from "./types";
 
 export interface ItemStore {
     [x: string]: string;
@@ -27,6 +28,11 @@ export interface BasicChannelItem extends BasicGuildItem {
     _id: string;
     buttons: { [x: string] : Button };
     allowedCommands: string[]
+}
+
+export interface BasicSettingsItem extends BasicGuildItem {
+    _id: string;
+    data: JSONValue;
 }
 
 /**
@@ -132,5 +138,26 @@ export class ChannelItem extends GuildItem implements BasicChannelItem {
 
     import(obj: BasicChannelItem) : ChannelItem {
         return new ChannelItem(obj._id, obj.buttons, obj.allowedCommands);
+    }
+}
+
+/**
+ * Template for storage for non-localised functions
+ */
+export class SettingsItem extends GuildItem implements BasicSettingsItem {
+    _collection: DatabaseCollection = DatabaseCollection.SETTINGS;
+    data: JSONValue;
+
+    constructor(settingName: string, settingData?: JSONValue) {
+        super(settingName);
+        this.data = settingData;
+    }
+
+    static getEmpty(settingName: string) {
+        return new SettingsItem(settingName, null);
+    }
+
+    import(obj: BasicSettingsItem): GuildItem {
+        return new SettingsItem(obj._id, obj.data);
     }
 }

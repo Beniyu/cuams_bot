@@ -19,7 +19,8 @@ import {JSONValue} from "./types";
 export enum DatabaseCollection {
     USERS = "users",
     ROLES = "roles",
-    CHANNELS = "channels"
+    CHANNELS = "channels",
+    SETTINGS = "settings",
 }
 
 /**
@@ -243,11 +244,17 @@ export class MongoDatabase extends MongoClient implements BaseDatabase {
 }
 
 // Database retrievable globally
-let _globalDB : DiscordDatabase = null;
+let _globalDB : DiscordDatabase;
 
 // Retrieval method
 export function getDB() : DiscordDatabase {
     return _globalDB;
+}
+
+// Setting method
+export function setDB(database: DiscordDatabase) : void {
+    if (typeof _globalDB === "undefined") _globalDB = database;
+    else throw new Error("Database attempted to be reassigned.");
 }
 
 /**
@@ -257,7 +264,7 @@ export class DiscordDatabase {
     _db: BaseDatabase;
 
     constructor(database: BaseDatabase) {
-        _globalDB = this;
+        setDB(this);
         this._db = database;
     }
 

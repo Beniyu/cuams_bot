@@ -1,2 +1,3 @@
-./db/*
-./configdb/*
+configdb
+db
+node_modules

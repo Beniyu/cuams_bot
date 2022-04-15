@@ -24,9 +24,6 @@ module.exports = {
         // Get customId of button
         const buttonID: string = interaction.customId;
 
-        // Ignore buttons that were not tagged
-        if (!buttonID) return;
-
         // Retrieve button data from channel
         let channel = await getDB().getItem(new ChannelItem(interaction.channelId));
 
@@ -35,10 +32,12 @@ module.exports = {
 
         // Ignore if button not found in channel
         let buttonList = channel[0].buttons;
-        if (!buttonList.hasOwnProperty(buttonID)) return interaction.reply({content: "Error.", ephemeral: true});
+        if (!buttonList.hasOwnProperty(interaction.message.id)) return interaction.reply({content: "Error.", ephemeral: true});
 
-        let button : Button = buttonList[buttonID];
+        let button : Button = buttonList[interaction.message.id];
+        button.data.customId = buttonID;
 
+        let response;
         switch (button.type) {
             case ButtonType.ACTION:
                 let client = interaction.client as DiscordClient;
@@ -48,11 +47,12 @@ module.exports = {
 
                 // Get and execute action
                 let action = client.getAction(button.data.name as string);
-                await action.execute(interaction, button.data);
+                response = await action.execute(interaction, button.data);
                 break;
         }
 
         // Empty response for buttons
-        await interaction.update({});
+        if (response) await interaction.update(response);
+        else await interaction.update({});
     }
 }
