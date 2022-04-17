@@ -106,8 +106,5 @@ dist
 # IntelliJ
 .idea/*
 
-# Credentials
-../credentials/config.json
-
 # Test coverage
 test-report.xml
