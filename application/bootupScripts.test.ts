@@ -1,7 +1,7 @@
 /**
  * Test file for bootupScript.ts
  */
-import {synchronize} from "./bootupScripts";
+import {synchronizeDatabase} from "./bootupScripts";
 import * as Discord from "discord.js";
 import {stringify} from "ts-jest";
 import {BaseDatabase, DatabaseCollection, DiscordDatabase} from "./database";
@@ -110,7 +110,7 @@ test('Test if synchronization of dummy client and database possible', async () =
                             return new Promise((accept) => {
                                 setTimeout(() => {
                                     accept(discordData);
-                                }, 100);
+                                }, 1);
                             })
                         }
                     };
@@ -134,7 +134,7 @@ test('Test if synchronization of dummy client and database possible', async () =
     let dummyDiscordDatabase = new DiscordDatabase(dummyDatabase);
 
     // Run the function
-    await synchronize(client as DiscordClient, "dummy", dummyDiscordDatabase);
+    await synchronizeDatabase(client as DiscordClient, "dummy", dummyDiscordDatabase);
 
     // Get users
     let {users} = await dummyDiscordDatabase.getGuildData();

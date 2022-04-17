@@ -11,4 +11,6 @@ services:
                 aliases:
                  - node
         volumes:
-            - /var/jenkins_home/bot_credentials:/credentials
+            - /var/jenkins_home/credentials:/app/credentials
+        ports:
+            - "9012:9012"

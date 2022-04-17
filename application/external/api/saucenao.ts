@@ -5,6 +5,8 @@
 import Axios from "axios";
 import {URLSearchParams} from "url";
 
+const { sauceNaoAPIKey } = require('../../credentials/config.json');
+
 export interface SauceNAOResponse {
     results: SauceNAOResponseImage[]
 }
@@ -38,7 +40,7 @@ export async function getSauceNaoImageData(imageURL: string) : Promise<SauceNAOR
 
     // Form Sauce Nao API request
     const queryParams : {[x: string] : string} = {
-        api_key: "b104eebc21f184e229344b0e8af365bef47e7479",
+        api_key: sauceNaoAPIKey,
         db: "999",
         output_type: "2",
         numres: "1",

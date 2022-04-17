@@ -3,8 +3,14 @@
  */
 import {DiscordClient} from "./discordClient";
 import {DiscordDatabase} from "./database";
-import {Guild, GuildChannel, NewsChannel, TextChannel} from "discord.js";
+import {Guild, GuildChannel, GuildScheduledEvent, NewsChannel, TextChannel} from "discord.js";
 import {ChannelItem, GuildItem, RoleItem, UserItem} from "./guildItems";
+import {
+    addCalendarEvent, checkIfGoogleAuthorized,
+    deleteCalendarEvent,
+    getFutureCalendarEvents,
+    GoogleCalendarEvent
+} from "./external/google/googlecalendar";
 
 type Data = {
     users: UserItem[],
@@ -13,12 +19,71 @@ type Data = {
 }
 
 /**
+ * Synchronize discord client with other interfaces
+ * @param client DiscordClient instance
+ * @param guildID Guild ID
+ * @param database Database
+ */
+export async function synchronize(client : DiscordClient, guildID : string, database: DiscordDatabase) : Promise<boolean> {
+    await synchronizeDatabase(client, guildID, database);
+    if (!(await checkIfGoogleAuthorized())) {
+        console.log("Google calendar not authorized. Failed to synchronize.");
+        return false;
+    }
+    let calendarStatus = await synchronizeCalendar(client, guildID);
+    if (!calendarStatus) console.log("Failed to synchronize calendar.");
+    return calendarStatus;
+}
+
+/**
+ * Synchronises scheduled events with Google Calendar
+ * @param client DiscordClient instance
+ * @param guildID Guild IDs
+ */
+async function synchronizeCalendar(client : DiscordClient, guildID: string) : Promise<boolean> {
+    // Check if Google is authorized before attempting to synchronize events
+    let authStatus = await checkIfGoogleAuthorized();
+    if (!authStatus) return false;
+
+    // Get events from Google and Discord
+    const guild : Guild = await client.guilds.fetch(guildID);
+    const discordEvents : GuildScheduledEvent[] = Array.from((await guild.scheduledEvents.fetch()).values());
+    const googleEvents : GoogleCalendarEvent[] = await getFutureCalendarEvents();
+
+    // Get discrepancy between Discord and Google
+    const [missingDiscordEvents, missingGoogleEvents] = getArrayDiscrepancy(discordEvents, googleEvents, "id");
+
+    let googlePromises : Promise<void>[] = [];
+
+    // Events missing on Discord are deleted
+    for (let event of missingDiscordEvents) {
+        googlePromises.push(deleteCalendarEvent(event.id));
+    }
+
+    // Events missing on the calendar are added
+    for (let event of missingGoogleEvents) {
+        let location;
+        if (event.entityMetadata) location = event.entityMetadata.location;
+        else location = null;
+        googlePromises.push(addCalendarEvent(event.id, event.scheduledStartAt, event.scheduledEndAt, event.name, event.description, location));
+    }
+
+    // Return false if error occurs
+    try {
+        await Promise.all(googlePromises);
+        return true;
+    } catch (err) {
+        return false;
+    }
+}
+
+/**
  * Synchronizes the user database with the guild member list
  * @param client The DiscordClient instance
  * @param guildID The guild ID
  * @param database The DiscordDatabase instance
  */
-export async function synchronize(client : DiscordClient, guildID : string, database: DiscordDatabase) : Promise<void> {
+export async function synchronizeDatabase(client : DiscordClient, guildID : string, database: DiscordDatabase) {
     // Get all IDs from Discord
     const discordPromise : Promise<Data> = getGuildData(client, guildID);
     // Get all IDs from database
@@ -35,8 +100,7 @@ export async function synchronize(client : DiscordClient, guildID : string, data
     // Check discrepancies between discord and database and fix them
     for (let dataPart of ["users", "roles", "channels"]) {
         // Get mismatch from each list
-        const missingDatabaseData : GuildItem[] = discordData[dataPart].filter(member => !(databaseData[dataPart].map(item => item._id).includes(member._id)));
-        const missingDiscordData : GuildItem[] = databaseData[dataPart].filter(member => !(discordData[dataPart].map(item => item._id).includes(member._id)));
+        const [missingDatabaseData, missingDiscordData] = getArrayDiscrepancy(databaseData[dataPart] as GuildItem[], discordData[dataPart] as GuildItem[], "_id");
         databaseFinalPromises.push(database.addItem(missingDatabaseData));
         databaseFinalPromises.push(database.deleteItem(missingDiscordData));
     }
@@ -102,4 +166,10 @@ async function getGuildData(client: DiscordClient, guildID: string) : Promise<Da
         roles: roles,
         channels: channels,
     };
+}
+
+function getArrayDiscrepancy<T,K>(array1: T[], array2: K[], identifier: string) : [K[], T[]] {
+    const array1MissingData : K[] = array2.filter(member => !(array1.map(item => item[identifier]).includes(member[identifier])));
+    const array2MissingData : T[] = array1.filter(member => !(array2.map(item => item[identifier]).includes(member[identifier])));
+    return [array1MissingData, array2MissingData];
 }

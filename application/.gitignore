@@ -107,7 +107,7 @@ dist
 .idea/*
 
 # Credentials
-config.json
+../credentials/config.json
 
 # Test coverage
 test-report.xml
