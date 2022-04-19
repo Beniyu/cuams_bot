@@ -45,7 +45,7 @@ readFile(databaseCredentialsFile, "utf-8")
 			let newChannel = {};
 			Object.assign(newChannel, currentChannel);
 			newChannel["suggestionChannel"] = newChannel["_id"];
-			dbPromises.push(channelCollection.update(currentChannel, newChannel));
+			dbPromises.push(channelCollection.updateOne(currentChannel, newChannel));
 		}
 		return Promise.all(dbPromises);
 	})
