@@ -42,10 +42,7 @@ readFile(databaseCredentialsFile, "utf-8")
 	.then((channels: Object[]) => {
 		let dbPromises = [];
 		for (let currentChannel of channels) {
-			let newChannel = {};
-			Object.assign(newChannel, currentChannel);
-			newChannel["suggestionChannel"] = newChannel["_id"];
-			dbPromises.push(channelCollection.updateOne(currentChannel, newChannel));
+			dbPromises.push(channelCollection.updateOne(currentChannel, {"$set" : {"suggestionChannel" : currentChannel["_id"]}}));
 		}
 		return Promise.all(dbPromises);
 	})
