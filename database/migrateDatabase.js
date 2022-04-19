@@ -29,7 +29,7 @@ fs.readFile(databaseCredentialsFile, "utf-8", (err1, data) => {
 		const db = client.db(databaseName);
 		await db.collection("channels").update({}, {'$set': {"anonymousSuggestions": false}});
 		let dbPromises = [];
-		for (let currentChannel of await db.collection("channels").find()) {
+		for (let currentChannel of (await db.collection("channels").find()).toArray()) {
 			let newChannel = {};
 			Object.assign(newChannel, currentChannel);
 			newChannel["suggestionChannel"] = newChannel["_id"];
