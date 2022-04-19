@@ -17,11 +17,25 @@ switch (databaseType)
 		process.exit(0);
 }
 
-fs.readFile(databaseCredentialsFile, (err1, data) => {
-	var credentials = JSON.parse(data);
-	var MongoClient = require('mongodb').MongoClient;
-	var url = "mongodb://" + credentials.username + ":" + credentials.password + "@docker:27017/" + databaseName;
-	MongoClient.connect(url, (err2, client) => {
+fs.readFile(databaseCredentialsFile, "utf-8", (err1, data) => {
+	const credentials = JSON.parse(data);
+	const MongoClient = require('mongodb').MongoClient;
+	const url = "mongodb://" + credentials.username + ":" + credentials.password + "@docker:27017/" + databaseName;
+	MongoClient.connect(url, async (err2, client) => {
+		if (err2) {
+			console.error(err2);
+			throw new Error("Failed to connect to database.");
+		}
+		const db = client.db(databaseName);
+		await db.collection("channels").update({}, {'$set': {"anonymousSuggestions": false}});
+		let dbPromises = [];
+		for (let currentChannel of await db.collection("channels").find()) {
+			let newChannel = {};
+			Object.assign(newChannel, currentChannel);
+			newChannel["suggestionChannel"] = newChannel["_id"];
+			dbPromises.push(db.collection("channels").update(currentChannel, newChannel));
+		}
+		await Promise.all(dbPromises);
 		client.close();
 	});
 });
