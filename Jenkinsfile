@@ -39,8 +39,11 @@ pipeline {
 		stage('Migrate Database')
 		{
 			steps {
-				sh "npm install mongodb fs"
-				sh "node ./database/migrateDatabase.js staging"
+			    dir ("database")
+			    {
+                    sh "npm install"
+                    sh "node migrateDatabase.ts staging"
+				}
 			}
 		}
 		
