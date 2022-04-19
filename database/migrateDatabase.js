@@ -27,9 +27,9 @@ fs.readFile(databaseCredentialsFile, "utf-8", (err1, data) => {
 			throw new Error("Failed to connect to database.");
 		}
 		const db = client.db(databaseName);
-		await db.collection("channels").update({}, {'$set': {"anonymousSuggestions": false}});
+		await db.collection("channels").updateMany({}, {'$set': {"anonymousSuggestions": false}});
 		let dbPromises = [];
-		let channels = await db.collection("channels").find({});
+		let channels = await db.collection("channels").find();
 		let channelArray = channels.toArray();
 		for (let currentChannel of channelArray) {
 			let newChannel = {};
