@@ -8,13 +8,19 @@ import {DatabaseItemProperties, getDB} from "../database";
 import {privateResponse} from "../server";
 
 enum ValidSubcommandGroups {
-    COMMANDS = "commands"
+    COMMANDS = "commands",
+    SUGGESTIONS = "suggestions",
 }
 
 enum ValidCommandSubcommands {
     ENABLE = "enable",
     DISABLE = "disable",
     LIST = "list",
+}
+
+enum ValidSuggestionSubcommands {
+    CHANNEL = "channel",
+    ANONYMOUS = "anonymous",
 }
 
 module.exports = {
@@ -41,7 +47,23 @@ module.exports = {
                    subcommand
                        .setName("list")
                        .setDescription("List enabled commands in channel.")
-                       .addChannelOption(channel => channel.setName("target").setDescription("The channel").setRequired(true)))),
+                       .addChannelOption(channel => channel.setName("target").setDescription("The channel").setRequired(true))))
+        .addSubcommandGroup(subcommandGroup =>
+            subcommandGroup
+                .setName("suggestions")
+                .setDescription("Change suggestion command settings in channel")
+                .addSubcommand(subcommand =>
+                    subcommand
+                        .setName("channel")
+                        .setDescription("Set the channel redirect for the /suggestion command")
+                        .addChannelOption(channel => channel.setName("target").setDescription("The channel to redirect suggestions to").setRequired(true))
+                        .addChannelOption(channel => channel.setName("source").setDescription("The channel from which suggestions are redirected (default: this channel)").setRequired(false)))
+                .addSubcommand(subcommand =>
+                    subcommand
+                        .setName("anonymous")
+                        .setDescription("Enable anonymous suggestions in a channel.")
+                        .addBooleanOption(boolean => boolean.setName("enabled").setDescription("Whether suggestions in this channel can be anonymous.").setRequired(true))
+                        .addChannelOption(channel => channel.setName("source").setDescription("The channel the suggestions originate from (default: this channel)").setRequired(false)))),
 
     async execute(interaction: CommandInteraction) {
         let subcommandGroup: ValidSubcommandGroups = interaction.options.getSubcommandGroup() as ValidSubcommandGroups;
@@ -49,6 +71,9 @@ module.exports = {
         switch (subcommandGroup) {
             case ValidSubcommandGroups.COMMANDS:
                 await handleCommands(interaction);
+                break;
+            case ValidSubcommandGroups.SUGGESTIONS:
+                await handleSuggestions(interaction);
                 break;
         }
     }
@@ -60,7 +85,7 @@ async function handleCommands(interaction: CommandInteraction) {
     let channel = interaction.options.getChannel('target');
     let command = interaction.options.getString('command');
 
-    // User/role must be specified
+    // Channel must be specified
     if (!channel || channel instanceof ThreadChannel) {
         await interaction.reply({content:"Must specify channel.", ephemeral: true});
         return;
@@ -125,4 +150,58 @@ async function getChannelCommands(interaction: CommandInteraction, channel: Chan
     }
 
     await privateResponse(interaction, "Commands: " + retrievedChannel[0].allowedCommands.join(', '));
+}
+
+async function handleSuggestions(interaction: CommandInteraction) {
+    // Get subcommand and all fields
+    let subcommand : ValidSuggestionSubcommands = interaction.options.getSubcommand() as ValidSuggestionSubcommands;
+    let target = interaction.options.getChannel("target");
+    let source = interaction.options.getChannel("source") || interaction.channel;
+    let anonymous : boolean = interaction.options.getBoolean("enabled");
+
+    if (source instanceof ThreadChannel) {
+        await interaction.reply({content:"Must specify channel.", ephemeral: true});
+        return;
+    }
+
+    let sourceQuery = new ChannelItem(source.id);
+
+    switch (subcommand) {
+        case ValidSuggestionSubcommands.CHANNEL:
+            if (!target || target instanceof ThreadChannel) {
+                await interaction.reply({content:"Must specify channel.", ephemeral: true});
+                return;
+            }
+            await setSuggestionChannel(interaction, sourceQuery, target.id);
+            break;
+        case ValidSuggestionSubcommands.ANONYMOUS:
+            await setSuggestionChannelAnonymity(interaction, sourceQuery, anonymous);
+            break;
+    }
+}
+
+/**
+ * Set suggestion channel redirect in database
+ * @param interaction Command interaction
+ * @param channelQuery Channel query
+ * @param redirectedChannelID Channel ID to redirect suggestions to
+ */
+async function setSuggestionChannel(interaction: CommandInteraction, channelQuery: ChannelItem, redirectedChannelID: string) {
+    await getDB().setItemProperty(channelQuery, DatabaseItemProperties.SUGGESTIONCHANNEL, redirectedChannelID);
+    await privateResponse(interaction, "Suggestion channel changed.");
+}
+
+/**
+ * Enable/disable anonymous suggestions in channel
+ * @param interaction Command interaction
+ * @param channelQuery Channel query
+ * @param enabled Whether anonymous suggestions are enabled
+ */
+async function setSuggestionChannelAnonymity(interaction: CommandInteraction, channelQuery: ChannelItem, enabled: boolean) {
+    await getDB().setItemProperty(channelQuery, DatabaseItemProperties.ANONYMOUSSUGGESTIONS, enabled);
+    if (enabled) {
+        await privateResponse(interaction, "Suggestion anonymity enabled.");
+    } else {
+        await privateResponse(interaction, "Suggestion anonymity disabled.");
+    }
 }

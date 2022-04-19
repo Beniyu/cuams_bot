@@ -31,6 +31,8 @@ export enum DatabaseItemProperties {
     PERMISSIONS = "permissions",
     BUTTONS = "buttons",
     ALLOWEDCOMMANDS = "allowedCommands",
+    SUGGESTIONCHANNEL = "suggestionChannel",
+    ANONYMOUSSUGGESTIONS = "anonymousSuggestions",
 }
 
 export interface BaseDatabase {

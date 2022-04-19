@@ -27,7 +27,9 @@ export interface BasicRoleItem extends BasicGuildItem {
 export interface BasicChannelItem extends BasicGuildItem {
     _id: string;
     buttons: { [x: string] : Button };
-    allowedCommands: string[]
+    allowedCommands: string[],
+    suggestionChannel: string,
+    anonymousSuggestions: boolean,
 }
 
 export interface BasicSettingsItem extends BasicGuildItem {
@@ -124,20 +126,24 @@ export class RoleItem extends PermissionedGuildItem implements BasicRoleItem {
 export class ChannelItem extends GuildItem implements BasicChannelItem {
     buttons: { [x: string] : Button };
     allowedCommands: string[];
+    suggestionChannel: string;
+    anonymousSuggestions: boolean;
     _collection = DatabaseCollection.CHANNELS;
 
-    constructor(id?: string, buttons?: { [x: string] : Button }, allowedCommands?: string[]) {
+    constructor(id?: string, buttons?: { [x: string] : Button }, allowedCommands?: string[], suggestionChannel?: string, anonymousSuggestions?: boolean) {
         super(id);
         this.buttons = buttons;
         this.allowedCommands = allowedCommands;
+        this.suggestionChannel = suggestionChannel;
+        this.anonymousSuggestions = anonymousSuggestions;
     }
 
     static getEmpty(id: string) : ChannelItem {
-        return new ChannelItem(id, {}, []);
+        return new ChannelItem(id, {}, [], id, false);
     }
 
     import(obj: BasicChannelItem) : ChannelItem {
-        return new ChannelItem(obj._id, obj.buttons, obj.allowedCommands);
+        return new ChannelItem(obj._id, obj.buttons, obj.allowedCommands, obj.suggestionChannel, obj.anonymousSuggestions);
     }
 }
 

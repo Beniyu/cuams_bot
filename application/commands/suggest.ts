@@ -14,7 +14,7 @@ import {
 } from "discord.js";
 import {privateResponse} from "../server";
 import {DatabaseItemProperties, getDB} from "../database";
-import {ChannelItem, SettingsItem} from "../guildItems";
+import {ChannelItem} from "../guildItems";
 import {MessageButtonStyles} from "discord.js/typings/enums";
 import {Button, ButtonType} from "../buttons";
 import {JSONObject} from "../types";
@@ -34,12 +34,23 @@ module.exports = {
         const anonymous: boolean = interaction.options.getBoolean("anonymous");
 
         // Get channel from database
-        let settings: SettingsItem[] = await getDB().getItem(new SettingsItem("suggestions"));
-        let responseChannel: TextBasedChannel;
+        let channel : ChannelItem[] = await getDB().getItem(new ChannelItem(interaction.channel.id));
 
-        // Use channel command is used in if it's not defined in database
-        if (settings.length === 0) responseChannel = interaction.channel
-        else responseChannel = await interaction.client.channels.fetch(settings[0].data["responseChannel"]) as TextBasedChannel;
+        // Return message channel if channel missing in database
+        if (channel.length === 0) {
+            const newChannel = ChannelItem.getEmpty(interaction.channel.id);
+            channel = [newChannel];
+        }
+
+        // Return message channel if database entry is incomplete
+        let suggestionChannelID : string = channel[0].suggestionChannel || interaction.channel.id;
+        let suggestionChannelAnonymity : boolean = channel[0].anonymousSuggestions || false;
+        let responseChannel: TextBasedChannel = await interaction.client.channels.fetch(suggestionChannelID) as TextBasedChannel;
+
+        if (anonymous && !suggestionChannelAnonymity) {
+            await privateResponse(interaction, "Anonymous suggestions are not allowed in this channel.");
+            return;
+        }
 
         // Generate embed for suggestion contents
         let suggestionEmbed: MessageEmbedOptions = {
@@ -92,7 +103,7 @@ module.exports = {
         };
 
         // Add button to database
-        await getDB().setItemProperty(new ChannelItem(interaction.channel.id), `${DatabaseItemProperties.BUTTONS}.${messageID}`, newButtons as unknown as JSONObject);
+        await getDB().setItemProperty(new ChannelItem(responseChannel.id), `${DatabaseItemProperties.BUTTONS}.${messageID}`, newButtons as unknown as JSONObject);
 
         // Finish interaction
         await privateResponse(interaction, "Your suggestion has been sent!");

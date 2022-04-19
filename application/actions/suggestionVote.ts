@@ -58,8 +58,8 @@ module.exports = {
         }
 
         let newActionRow = new MessageActionRow();
-        for (let button of currentButtons) {
-            newActionRow.addComponents(button);
+        for (let newButton of currentButtons) {
+            newActionRow.addComponents(newButton);
         }
 
         // Create new database entry
