@@ -42,7 +42,7 @@ pipeline {
 			    dir ("database")
 			    {
                     sh "npm install"
-                    sh "node migrateDatabase.ts staging"
+                    sh "npx ts-node migrateDatabase.ts staging"
 				}
 			}
 		}
